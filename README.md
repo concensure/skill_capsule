@@ -1,79 +1,115 @@
-# Portable Agent Skills Directory
+# Skill Capsule
 
-> A zero-friction, hierarchical skills directory for AI agents (Claude Code, Gemini, Cursor, etc.) with visual management and safety-first GitHub uploading.
+Portable, atomic, executable skill runtime for AI coding workflows.
 
-## Features
+## Problem it solves
 
-- **Visual Dashboard:** Zero-friction `dashboard.html` to visualize skill hierarchy and triggers.
-- **Hierarchical Routing:** Domain and Cascade skills for token-efficient loading (based on CLAIR).
-- **GitHub Safety Skill:** Built-in protocol for scrubbing secrets and local data before publishing.
-- **Portable:** Works with any MCP-compatible AI coding assistant.
+Skill Capsule addresses the challenges of inconsistent, unsafe, and fragmented AI skill implementations in coding workflows. Traditional skill systems often lack standardized execution environments, proper dependency management, and built-in safety checks, leading to unreliable automation, security vulnerabilities, and maintenance overhead. This runtime provides a deterministic, atomic approach to skill execution that ensures reliability and safety across diverse AI coding tasks.
 
-## Core Commands
+## How it is different from skill documents
 
-### 1. Initialize
-Set up the Skill Capsule structure and agent-specific pointer files:
+While skill documents are static descriptions of capabilities and interfaces, Skill Capsule is an executable runtime environment that brings skills to life. Unlike passive documentation, it actively manages skill classification, dependency resolution, hook execution, and artifact persistence. Skill documents define what skills can do; Skill Capsule executes them safely and reliably within controlled boundaries.
+
+## Values and benefits it provides
+
+Skill Capsule delivers several key benefits:
+- **Safety and Security**: Built-in permission checks, negative-intent blocking, and isolated execution prevent unauthorized or dangerous operations.
+- **Reliability**: Deterministic task classification and atomic artifact management ensure consistent, reproducible outcomes.
+- **Efficiency**: Automated dependency resolution, phase-ordered execution, and artifact reuse streamline complex workflows.
+- **Maintainability**: Structured logging, artifact retention, and regression testing simplify debugging and evolution.
+- **Portability**: Capsule-based design allows skills to run across different environments without external dependencies.
+
+## What is implemented
+
+- Capsule and atom registry loaded from `.skillcapsule/capsules` and `.skillcapsule/atoms`
+- Deterministic task classification, atom matching, dependency resolution, and negative-intent blocking
+- Hook planning by phase with dependency-aware ordering, registry-only execution, permission checks, timeout enforcement, and output summaries
+- Hook command allowlisting, local hook-script path enforcement, and shell-free execution for registered hooks
+- Minimized hook process environment with explicit passthrough allowlisting
+- Compact `S/O/X` render compilation with activation receipts
+- Explicit preflight execution for `before_render` and `before_action` hooks with readiness receipts
+- Compose, prepare, and verify runs persisted as JSON artifacts under `.skillcapsule/compiled/`
+- Atomic artifact and index writes with rollback on index persistence failure
+- Structured runtime error envelopes and JSONL audit logs under `.skillcapsule/logs/`
+- Startup config validation plus HTTP `/health` and `/ready` endpoints for deployment checks
+- Artifact index and retrieval support for recent compose/prepare/verify receipts
+- Artifact queries by kind, run ID, parent artifact ID, atom ID, status, and task type, plus latest/successful/failed lookup, lineage, summary counts, and resume hints
+- Configurable artifact retention with automatic and manual pruning
+- CLI commands for `init`, `index`, `classify`, `match`, `compose`, `prepare`, `activate`, `verify`, `patch validate`, `patch apply`, and `outcome record`
+- MCP wrapper exposing compose/prepare/activate/verify/outcome-record/patch-validate/patch-apply plus artifact list/get
+- MCP wrapper exposing compose/prepare/activate/verify/outcome-record/patch-validate/patch-apply plus artifact list/get/latest/lineage/summary
+- MCP tool responses return `{ ok: true, data: ... }` on success or a structured `{ ok: false, error: ... }` envelope on failure
+- Automated regression tests for compose, verify, validate, and patch-apply flows
+
+## Current boundary
+
+- Hook execution is phase-ordered, dependency-aware within each phase, and deduplicated.
+- A full DAG scheduler and real container-backed isolation are not implemented yet.
+- `before_action` hooks are not auto-run during `compose`; they run through explicit `prepare`.
+
+## Core commands
+
 ```bash
 skillcap init --project "My Project"
+skillcap index
+skillcap classify --task task.json
+skillcap match --task task.json
+skillcap compose --task task.json --budget 800
+skillcap prepare github.upload.safety --task task.json
+skillcap activate github.upload.safety --task task.json
+skillcap verify code.edit.scope_guard --task task.json
+skillcap patch validate .skillcapsule/patches/pending/change.json
+skillcap patch apply .skillcapsule/patches/pending/change.json
+skillcap outcome record outcome.json
+skillcap artifact list --kind verify --limit 5
+skillcap artifact list --run-id run-shared-flow
+skillcap artifact list --parent-artifact-id verify-abc123
+skillcap artifact list --kind prepare --atom-id github.upload.safety --status READY
+skillcap artifact list --task-type publish --limit 10
+skillcap artifact latest --kind verify --atom-id code.edit.safe --success-only
+skillcap artifact latest --run-id run-shared-flow --failed-only
+skillcap artifact lineage run-shared-flow
+skillcap artifact resume verify-abc123
+skillcap artifact summary --kind prepare --atom-id github.upload.safety
+skillcap artifact show verify-abc123
+skillcap artifact prune
 ```
 
-### 2. Compose Context
-Classify a task and compile a compact, hook-verified skill capsule for the LLM:
+## Compose example
+
 ```bash
-skillcap compose "Upload this project to GitHub but do not push"
+skillcap compose "Upload this project to GitHub but do not push" --budget 800
 ```
-- **Features:** Negative intent detection (e.g., `no_push`), risk-sensitive budgeting, and automatic `before_render` hooks.
 
-### 3. Verify Patch
-Run mandatory `after_action` verification loops (typecheck, tests, scope check):
+Expected behaviour:
+
+- classify the task as `publish`
+- match `github.upload.safe`
+- activate `github.upload.safety` and `github.commit.message`
+- block `github.push.confirmation` through the `no_push` negative intent
+- run `before_render` hooks such as `hook.git.status`
+- compile a compact LLM-ready capsule
+- assign a run ID and persist a compose artifact that later prepare/verify steps can attach to
+
+Preflight example:
+
 ```bash
-skillcap verify code.edit.scope_guard
-```
-- **Outcome:** Generates a **Patch Receipt** building trust through explicit validation.
-
-## Architecture
-
-- **Atoms:** Addressable skill fragments with formal **Contracts**.
-- **DAG Hooks:** Deterministic, race-free hook execution in isolated environments.
-- **Verification Loops:** Mandatory post-edit checks for type safety and edit scope.
-- **Meta-Evolution:** Gated promotion (Candidate -> Experimental -> Active) based on usage evidence.
-
-## Dashboard
-
-The `dashboard.html` provides a modern interface to:
-- Browse all Domain and Cascade skills.
-- Reference triggering keywords at a glance.
-- One-click copy for triggers.
-- Direct links to edit skill definitions (via `vscode://` protocol).
-
-## GitHub Upload Protocol
-
-The `github` skill enforces a critical safety protocol:
-- **Project Isolation:** Removes data from other projects.
-- **Secret Scrubbing:** Checks for API keys and passwords.
-- **Local Cleaning:** Removes `localhost` and machine-specific paths.
-
-## Skill Tree Structure
-
-```
-skills/
-├── domains/          ← Top-level task categories
-│   ├── github.md     (Safety-first publishing)
-│   ├── documents.md
-│   ├── coding.md
-│   ├── data.md
-│   └── research.md
-└── cascades/         ← Specialized sub-skills
-    ├── documents/
-    │   ├── docx.md
-    │   ├── pdf.md
-    │   └── pptx.md
-    └── coding/
-        ├── python.md
-        ├── typescript.md
-        └── testing.md
+skillcap prepare github.upload.safety --task task.json
 ```
 
-## Credits
+Expected behaviour:
 
-Based on the **CLAIR (Cascaded Lazy AI Routing)** architecture.
+- execute `before_render` hooks
+- execute `before_action` hooks such as `hook.secrets.scan`
+- return `READY` or `BLOCKED` with a preparation receipt
+- persist the preparation artifact under `.skillcapsule/compiled/`
+
+## Development
+
+```bash
+npm install
+npm run build
+npm test
+npm start
+npm run start:stdio
+```
