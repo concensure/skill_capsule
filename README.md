@@ -9,26 +9,34 @@
 - **GitHub Safety Skill:** Built-in protocol for scrubbing secrets and local data before publishing.
 - **Portable:** Works with any MCP-compatible AI coding assistant.
 
-## One-Line Install
+## Core Commands
 
-Initialize Skill Capsule and generate agent recognition files in any project:
-
+### 1. Initialize
+Set up the Skill Capsule structure and agent-specific pointer files:
 ```bash
-npx skillcap init --project "My Project Name"
+skillcap init --project "My Project"
 ```
 
-This command will:
-1.  **Initialize Structure:** Create the `.skillcapsule/` directory and all subfolders.
-2.  **Generate Config:** Create a default `skillcapsule.config.json` with risk-sensitive budgeting.
-3.  **Enable Agent Recognition:** Automatically generate `CLAUDE.md`, `.cursorrules`, and `GEMINI.md` to ensure your AI assistant recognizes the skill registry immediately.
+### 2. Compose Context
+Classify a task and compile a compact, hook-verified skill capsule for the LLM:
+```bash
+skillcap compose "Upload this project to GitHub but do not push"
+```
+- **Features:** Negative intent detection (e.g., `no_push`), risk-sensitive budgeting, and automatic `before_render` hooks.
 
-## Agent Recognition
+### 3. Verify Patch
+Run mandatory `after_action` verification loops (typecheck, tests, scope check):
+```bash
+skillcap verify code.edit.scope_guard
+```
+- **Outcome:** Generates a **Patch Receipt** building trust through explicit validation.
 
-Skill Capsule is recognized by all major AI coding assistants:
-- **Claude Code:** via `CLAUDE.md`
-- **Cursor:** via `.cursorrules`
-- **Gemini:** via `GEMINI.md`
-- **Codex / Kilo Code:** via atomic atom triggers in `.skillcapsule/atoms/`
+## Architecture
+
+- **Atoms:** Addressable skill fragments with formal **Contracts**.
+- **DAG Hooks:** Deterministic, race-free hook execution in isolated environments.
+- **Verification Loops:** Mandatory post-edit checks for type safety and edit scope.
+- **Meta-Evolution:** Gated promotion (Candidate -> Experimental -> Active) based on usage evidence.
 
 ## Dashboard
 

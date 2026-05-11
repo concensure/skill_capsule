@@ -4,6 +4,7 @@ const { Command } = require('commander');
 const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
+const SkillCapsuleRuntime = require('../src/runtime');
 
 const program = new Command();
 
@@ -37,7 +38,11 @@ program
     const config = {
       project_name: options.project,
       version: '0.1.0',
-      context_budget: { default: 800, max: 1200 },
+      context_budget: { 
+        default: 800, 
+        max: 1200,
+        mandatory_budget_reserved: { low: 0.20, medium: 0.35, high: 0.50, critical: 0.65 }
+      },
       security: { sandbox_mode: 'container' }
     };
     await fs.writeJson(path.join(process.cwd(), '.skillcapsule/skillcapsule.config.json'), config, { spaces: 2 });
@@ -55,6 +60,82 @@ program
 
     console.log(chalk.bold.green('\nSuccess! Skill Capsule initialized.'));
     console.log('Run ' + chalk.cyan('skillcap --help') + ' to see available commands.');
+  });
+
+program
+  .command('compose')
+  .description('Classify a task and compile a compact skill capsule')
+  .argument('<task>', 'Description of the task to perform')
+  .option('-b, --budget <tokens>', 'Maximum token budget for the capsule', parseInt)
+  .action(async (task, options) => {
+    const configPath = path.join(process.cwd(), '.skillcapsule/skillcapsule.config.json');
+    if (!fs.existsSync(configPath)) {
+      console.error(chalk.red('Error: .skillcapsule not initialized. Run "skillcap init" first.'));
+      process.exit(1);
+    }
+
+    const runtime = new SkillCapsuleRuntime(configPath);
+    console.log(chalk.blue('Composing capsule for task: ') + chalk.italic(task));
+
+    try {
+      const result = await runtime.compose(task, options.budget);
+      
+      console.log(chalk.green('\n' + result.receipt));
+      console.log(chalk.bold.blue('\n--- Compiled Context Capsule ---\n'));
+      console.log(result.compiledCapsule);
+      console.log(chalk.bold.blue('--- End of Capsule ---\n'));
+    } catch (err) {
+      console.error(chalk.red('\nComposition failed:'), err.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('verify')
+  .description('Run post-action verification hooks for a specific atom')
+  .argument('<atom-id>', 'ID of the atom to verify')
+  .action(async (atomId) => {
+    const configPath = path.join(process.cwd(), '.skillcapsule/skillcapsule.config.json');
+    if (!fs.existsSync(configPath)) {
+      console.error(chalk.red('Error: .skillcapsule not initialized.'));
+      process.exit(1);
+    }
+
+    const runtime = new SkillCapsuleRuntime(configPath);
+    console.log(chalk.blue(`Verifying atom: `) + chalk.bold(atomId));
+
+    try {
+      const atomPath = path.join(process.cwd(), `.skillcapsule/atoms/${atomId}.json`);
+      if (!fs.existsSync(atomPath)) {
+        throw new Error(`Atom definition not found: ${atomId}`);
+      }
+      const atom = fs.readJsonSync(atomPath);
+      const postHooks = atom.hooks ? atom.hooks.filter(h => h.phase === 'after_action') : [];
+      
+      if (postHooks.length === 0) {
+        console.log(chalk.yellow('No after_action hooks found for this atom.'));
+        return;
+      }
+
+      const results = await runtime.runHooks(postHooks);
+      
+      console.log(chalk.bold.green('\n[Patch Receipt]'));
+      let allPass = true;
+      for (const [id, res] of Object.entries(results)) {
+        console.log(`${id}: ${res.status === 'PASS' ? chalk.green('PASS') : chalk.red('FAIL')} (${res.output})`);
+        if (res.status !== 'PASS') allPass = false;
+      }
+
+      if (allPass) {
+        console.log(chalk.bold.green('\nVerification successful! Patch is safe to accept.'));
+      } else {
+        console.log(chalk.bold.red('\nVerification failed! Please address the issues above.'));
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(chalk.red('\nVerification failed:'), err.message);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);
