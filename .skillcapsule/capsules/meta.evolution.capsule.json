@@ -1,0 +1,17 @@
+{
+  "id": "meta.evolution",
+  "version": "0.1.0",
+  "type": "capsule",
+  "description": "Monitors skill usage patterns and evolves the registry through patch proposals.",
+  "atoms": [
+    "meta.monitor.usage",
+    "meta.propose.composite"
+  ],
+  "default_budget": 400,
+  "risk_policy": {
+    "low": "S",
+    "medium": "O",
+    "high": "O"
+  },
+  "status": "active"
+}

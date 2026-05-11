@@ -1,0 +1,20 @@
+{
+  "id": "code.safe.edit",
+  "version": "0.1.0",
+  "type": "capsule",
+  "description": "Enforces safety boundaries and verification loops during code edits.",
+  "atoms": [
+    "code.edit.scope_guard",
+    "code.refactor.boundary_check",
+    "code.test.related_tests",
+    "code.verify.typecheck",
+    "code.review.diff_risk"
+  ],
+  "default_budget": 800,
+  "risk_policy": {
+    "low": "S",
+    "medium": "O",
+    "high": "X"
+  },
+  "status": "active"
+}

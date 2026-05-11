@@ -1,0 +1,43 @@
+{
+  "id": "meta.monitor.usage",
+  "version": "0.1.0",
+  "kind": "utility",
+  "source": {
+    "file": "atoms/meta.md",
+    "section_id": "meta-monitor-usage"
+  },
+  "triggers": {
+    "keywords": ["skill", "hook", "usage", "pattern", "evolve", "optimize"],
+    "task_types": ["meta_analysis", "system_optimization"],
+    "auto_activate": true
+  },
+  "activation": {
+    "risk_min": "low",
+    "auto_activate": true
+  },
+  "autonomy_level": "level_1",
+  "routing_metrics": {
+    "false_positive_activation": 0,
+    "missed_activation": 0,
+    "user_overrode_capsule": 0,
+    "hook_failed_after_activation": 0
+  },
+  "hooks": [
+    {
+      "id": "hook.meta.log_activation",
+      "phase": "after_action",
+      "required": true,
+      "blocks_on_fail": false
+    }
+  ],
+  "render": {
+    "S": "Meta-Monitor: Usage tracked.",
+    "O": "[Activation Receipt]\nActivated Atoms: {{ACTIVATED_ATOMS}}\nHooks: {{HOOK_RESULTS}}\nPattern logged for off-hot-path analysis.",
+    "X": "[Activation Receipt]\nActivated Atoms: {{ACTIVATED_ATOMS}}\nTriggers matched: {{TRIGGERS}}\nHooks executed: {{HOOK_RESULTS}}\nStatus: Pattern recorded. System will suggest optimizations after sufficient evidence (min 10 occurrences)."
+  },
+  "token_estimate": {
+    "S": 15,
+    "O": 35,
+    "X": 65
+  }
+}

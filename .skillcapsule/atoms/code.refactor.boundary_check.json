@@ -1,0 +1,36 @@
+{
+  "id": "code.refactor.boundary_check",
+  "version": "0.1.0",
+  "kind": "verification",
+  "source": {
+    "file": "atoms/coding.md",
+    "section_id": "code-refactor-boundary-check"
+  },
+  "triggers": {
+    "keywords": ["refactor", "restructure", "move", "rename", "clean up"],
+    "task_types": ["refactor"]
+  },
+  "activation": {
+    "risk_min": "high",
+    "auto_activate": true
+  },
+  "hooks": [
+    {
+      "id": "hook.diff.public_api_change_detector",
+      "phase": "after_action",
+      "kind": "verify",
+      "required": true
+    }
+  ],
+  "render": {
+    "S": "Boundary Check: Refactoring must not break public APIs.",
+    "O": "Boundary Check: Analyzing diff for unintended public API changes or boundary violations.",
+    "X": "Boundary Check: CRITICAL. This is a refactor task. You MUST ensure that public API contracts remain stable. A mandatory hook will detect changes to exported symbols and public interfaces. Unintended boundary crossings will be flagged for review."
+  },
+  "autonomy_level": "level_0",
+  "token_estimate": {
+    "S": 18,
+    "O": 45,
+    "X": 95
+  }
+}

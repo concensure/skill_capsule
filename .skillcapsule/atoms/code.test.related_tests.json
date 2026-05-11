@@ -1,0 +1,36 @@
+{
+  "id": "code.test.related_tests",
+  "version": "0.1.0",
+  "kind": "verification",
+  "source": {
+    "file": "atoms/coding.md",
+    "section_id": "code-test-related-tests"
+  },
+  "triggers": {
+    "keywords": ["test", "verify", "check", "fix", "regression"],
+    "task_types": ["coding", "bugfix"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "hooks": [
+    {
+      "id": "hook.test.related",
+      "phase": "after_action",
+      "kind": "verify",
+      "required": true
+    }
+  ],
+  "render": {
+    "S": "Related Tests: Verifying patch with relevant tests.",
+    "O": "Related Tests: Running tests mapped to the changed files to ensure no regressions.",
+    "X": "Related Tests: MANDATORY. All code changes must be verified by running relevant test suites. The `hook.test.related` will automatically identify and execute tests affected by your patch. (Outcome: {{HOOK_RESULTS}})"
+  },
+  "autonomy_level": "level_2",
+  "token_estimate": {
+    "S": 15,
+    "O": 42,
+    "X": 85
+  }
+}

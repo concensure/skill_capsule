@@ -1,0 +1,18 @@
+{
+  "id": "github.upload.safe",
+  "version": "0.1.0",
+  "type": "capsule",
+  "description": "Safe GitHub upload workflow with preflight checks and intent awareness.",
+  "atoms": [
+    "github.upload.safety",
+    "github.commit.message",
+    "github.push.confirmation"
+  ],
+  "default_budget": 600,
+  "risk_policy": {
+    "low": "S",
+    "medium": "O",
+    "high": "X"
+  },
+  "status": "active"
+}

@@ -1,0 +1,125 @@
+{
+  "hooks": [
+    {
+      "id": "hook.meta.log_activation",
+      "command": "node .skillcapsule/hooks/scripts/meta-logger.js",
+      "permission": "read_write",
+      "kind": "summarise",
+      "timeout_ms": 2000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 50
+      }
+    },
+    {
+      "id": "hook.meta.analyze_patterns",
+      "command": "node .skillcapsule/hooks/scripts/meta-analyzer.js",
+      "permission": "read_only",
+      "kind": "observe",
+      "timeout_ms": 5000,
+      "phases": ["before_render"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 150
+      }
+    },
+    {
+      "id": "hook.git.status",
+      "command": "git status --porcelain",
+      "permission": "read_only",
+      "kind": "observe",
+      "timeout_ms": 3000,
+      "phases": ["before_render"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 100
+      }
+    },
+    {
+      "id": "hook.secrets.scan",
+      "command": "node .skillcapsule/hooks/scripts/secrets-scan.js",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 10000,
+      "phases": ["before_action"],
+      "summary": {
+        "mode": "pass_fail_findings",
+        "max_tokens": 120
+      }
+    },
+    {
+      "id": "hook.github.push",
+      "command": "git push {{REMOTE}} {{BRANCH}}",
+      "permission": "restricted_exec",
+      "kind": "external",
+      "timeout_ms": 60000,
+      "phases": ["after_action"],
+      "requires_user_approval": true,
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 100
+      }
+    },
+    {
+      "id": "hook.diff.scope_check",
+      "command": "node .skillcapsule/hooks/scripts/diff-analyzer.js --check-scope",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 5000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 100
+      }
+    },
+    {
+      "id": "hook.verify.typecheck",
+      "command": "npm run typecheck",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 30000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "pass_fail_findings",
+        "max_tokens": 150
+      }
+    },
+    {
+      "id": "hook.test.related",
+      "command": "npm test -- --findRelatedTests {{CHANGED_FILES}}",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 60000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "pass_fail_findings",
+        "max_tokens": 200
+      }
+    },
+    {
+      "id": "hook.review.diff_analysis",
+      "command": "node .skillcapsule/hooks/scripts/diff-analyzer.js --analyze-risk",
+      "permission": "read_only",
+      "kind": "summarise",
+      "timeout_ms": 5000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 150
+      }
+    },
+    {
+      "id": "hook.diff.public_api_change_detector",
+      "command": "node .skillcapsule/hooks/scripts/diff-analyzer.js --check-public-api",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 5000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "pass_fail_findings",
+        "max_tokens": 120
+      }
+    }
+  ]
+}

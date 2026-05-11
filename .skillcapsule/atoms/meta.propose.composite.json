@@ -1,0 +1,30 @@
+{
+  "id": "meta.propose.composite",
+  "version": "0.1.0",
+  "kind": "evolution",
+  "source": {
+    "file": "atoms/meta.md",
+    "section_id": "meta-propose-composite"
+  },
+  "triggers": {
+    "keywords": ["propose hook", "new capsule", "composite skill"],
+    "task_types": ["meta_analysis"],
+    "blocked_by_intents": ["no_meta_evolution"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": false
+  },
+  "autonomy_level": "level_3",
+  "status": "experimental",
+  "render": {
+    "S": "Evolution: Proposing a composite hook based on gated evidence.",
+    "O": "Evolution: Detected frequent co-occurrence of [Skill A] and [Skill B] ({{PAIR_COUNT}} times). Proposing a candidate composite. Negative Intent Detection (e.g., 'no_push') will ensure granular control.",
+    "X": "Evolution: Pattern analysis meets promotion criteria (10+ pairs, 3+ days). Proposing 'Experimental' composite capsule. Exception logic: Supported via 'blocked_by_intents'. Dry-run phase initiated."
+  },
+  "token_estimate": {
+    "S": 20,
+    "O": 45,
+    "X": 90
+  }
+}

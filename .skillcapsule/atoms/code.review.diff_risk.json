@@ -1,0 +1,36 @@
+{
+  "id": "code.review.diff_risk",
+  "version": "0.1.0",
+  "kind": "preflight",
+  "source": {
+    "file": "atoms/coding.md",
+    "section_id": "code-review-diff-risk"
+  },
+  "triggers": {
+    "keywords": ["patch", "diff", "review", "risk"],
+    "task_types": ["coding", "refactor"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "hooks": [
+    {
+      "id": "hook.review.diff_analysis",
+      "phase": "after_action",
+      "kind": "summarise",
+      "required": false
+    }
+  ],
+  "render": {
+    "S": "Diff Risk: Analyzing patch for complexity and unrelated edits.",
+    "O": "Diff Risk: Post-edit review will summarize change risk, diff size, and detect potentially unrelated file modifications.",
+    "X": "Diff Risk: Your patch will be audited for minimality. We use `hook.review.diff_analysis` to detect 'unrelated edits' or high-risk complexity. Keeping patches atomic and focused is required."
+  },
+  "autonomy_level": "level_1",
+  "token_estimate": {
+    "S": 14,
+    "O": 38,
+    "X": 80
+  }
+}

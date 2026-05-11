@@ -1,0 +1,37 @@
+{
+  "id": "code.verify.typecheck",
+  "version": "0.1.0",
+  "kind": "verification",
+  "source": {
+    "file": "atoms/coding.md",
+    "section_id": "code-verify-typecheck"
+  },
+  "triggers": {
+    "keywords": ["typescript", "rust", "go", "java", "type", "compilation"],
+    "task_types": ["coding", "bugfix"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "hooks": [
+    {
+      "id": "hook.verify.typecheck",
+      "phase": "after_action",
+      "kind": "verify",
+      "required": true,
+      "blocks_on_fail": true
+    }
+  ],
+  "render": {
+    "S": "Typecheck: Patch will be verified for type safety.",
+    "O": "Typecheck: Post-patch verification will run the project's typechecker (e.g., tsc, cargo check).",
+    "X": "Typecheck: Any proposed patch MUST satisfy the type system. A mandatory typecheck hook will run after your edits. Failures will trigger a diagnostic collection and require a fix before acceptance."
+  },
+  "autonomy_level": "level_1",
+  "token_estimate": {
+    "S": 12,
+    "O": 35,
+    "X": 70
+  }
+}

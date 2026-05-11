@@ -1,0 +1,19 @@
+# Environment variables — NEVER commit real API keys
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Test artifacts
+*.log

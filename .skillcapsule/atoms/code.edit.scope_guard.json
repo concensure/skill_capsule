@@ -1,0 +1,38 @@
+{
+  "id": "code.edit.scope_guard",
+  "version": "0.1.0",
+  "kind": "preflight",
+  "source": {
+    "file": "atoms/coding.md",
+    "section_id": "code-edit-scope-guard"
+  },
+  "triggers": {
+    "keywords": ["edit", "change", "modify", "update", "fix"],
+    "task_types": ["coding", "bugfix", "feature"],
+    "blocked_by_intents": ["no_file_write"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "hooks": [
+    {
+      "id": "hook.diff.scope_check",
+      "phase": "after_action",
+      "kind": "verify",
+      "required": true,
+      "blocks_on_fail": true
+    }
+  ],
+  "render": {
+    "S": "Scope Guard: Enforcing allowed edit paths.",
+    "O": "Scope Guard: Your edits will be checked against the allowed paths for this task. (Allowed: {{ALLOWED_PATHS}})",
+    "X": "Scope Guard: CRITICAL. You are only authorized to modify files within {{ALLOWED_PATHS}}. Edits to {{READONLY_PATHS}} are strictly forbidden. Any unrelated changes will be rejected by the post-edit verifier."
+  },
+  "autonomy_level": "level_0",
+  "token_estimate": {
+    "S": 15,
+    "O": 40,
+    "X": 85
+  }
+}

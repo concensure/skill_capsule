@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Skills Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #7dd3fc;
+            --trigger-bg: #334155;
+            --trigger-text: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .skill-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .skill-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent);
+        }
+
+        .skill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .skill-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--accent);
+            text-transform: capitalize;
+        }
+
+        .token-cost {
+            font-size: 0.8rem;
+            background-color: var(--trigger-bg);
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            color: var(--text-secondary);
+        }
+
+        .skill-path {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            word-break: break-all;
+        }
+
+        .triggers-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .triggers-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .trigger-tag {
+            background-color: var(--trigger-bg);
+            color: var(--trigger-text);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .trigger-tag:hover {
+            background-color: var(--accent);
+            color: var(--bg-color);
+        }
+
+        .skill-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            flex: 1;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: var(--bg-color);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .hierarchy-badge {
+            display: inline-block;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .badge-domain { background-color: #10b981; color: white; }
+        .badge-cascade { background-color: #f59e0b; color: white; }
+
+        #error-message {
+            background-color: #ef4444;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-top: 4rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Agent Skills Dashboard</h1>
+    <p class="subtitle">Hierarchical skill management and trigger reference</p>
+</header>
+
+<div id="error-message"></div>
+<div id="loading" class="loading">Loading manifest...</div>
+<div id="dashboard" class="dashboard-grid"></div>
+
+<script>
+    const dashboard = document.getElementById('dashboard');
+    const loading = document.getElementById('loading');
+    const errorMessage = document.getElementById('error-message');
+
+    async function loadManifest() {
+        try {
+            const response = await fetch('manifest.json');
+            if (!response.ok) throw new Error('Failed to load manifest.json');
+            const data = await response.json();
+            renderDashboard(data.skills);
+        } catch (error) {
+            console.error(error);
+            loading.style.display = 'none';
+            errorMessage.textContent = 'Error: ' + error.message + '. Make sure you are viewing this through a local server or that the browser allows local fetch.';
+            errorMessage.style.display = 'block';
+        }
+    }
+
+    function renderDashboard(skills) {
+        loading.style.display = 'none';
+        
+        // Sort skills: Domains first, then Cascades
+        const sortedSkills = [...skills].sort((a, b) => {
+            const isADomain = a.path.includes('domains');
+            const isBDomain = b.path.includes('domains');
+            if (isADomain && !isBDomain) return -1;
+            if (!isADomain && isBDomain) return 1;
+            return a.id.localeCompare(b.id);
+        });
+
+        sortedSkills.forEach(skill => {
+            const card = document.createElement('div');
+            card.className = 'skill-card';
+            
+            const isDomain = skill.path.includes('domains');
+            const typeClass = isDomain ? 'badge-domain' : 'badge-cascade';
+            const typeLabel = isDomain ? 'Domain' : 'Cascade';
+
+            card.innerHTML = `
+                <div class="hierarchy-badge ${typeClass}">${typeLabel}</div>
+                <div class="skill-header">
+                    <div class="skill-title">${skill.id.replace('_', ' ')}</div>
+                    <div class="token-cost">${skill.token_cost} tokens</div>
+                </div>
+                <div class="skill-path">${skill.path}</div>
+                
+                <div class="triggers-label">Triggers</div>
+                <div class="triggers-list">
+                    ${skill.triggers.map(t => `<span class="trigger-tag" title="Click to copy trigger">${t}</span>`).join('')}
+                </div>
+
+                ${skill.children && skill.children.length > 0 ? `
+                    <div class="triggers-label">Sub-skills</div>
+                    <div class="triggers-list">
+                        ${skill.children.map(c => `<span class="trigger-tag" style="background-color: #475569">${c}</span>`).join('')}
+                    </div>
+                ` : ''}
+
+                <div class="skill-actions">
+                    <a href="vscode://file/${window.location.pathname.replace('dashboard.html', '').replace(/^\/([a-z]):/i, '$1:')}${skill.path.replace(/\//g, '\\')}" class="btn btn-primary">Edit Skill</a>
+                </div>
+            `;
+
+            // Add copy functionality to triggers
+            card.querySelectorAll('.trigger-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    navigator.clipboard.writeText(tag.textContent);
+                    const originalText = tag.textContent;
+                    tag.textContent = 'Copied!';
+                    setTimeout(() => tag.textContent = originalText, 1000);
+                });
+            });
+
+            dashboard.appendChild(card);
+        });
+    }
+
+    loadManifest();
+</script>
+
+</body>
+</html>

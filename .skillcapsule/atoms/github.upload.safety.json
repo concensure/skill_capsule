@@ -1,0 +1,48 @@
+{
+  "id": "github.upload.safety",
+  "version": "0.1.0",
+  "kind": "preflight",
+  "source": {
+    "file": "skills/domains/github.md",
+    "section_id": "github-upload-safety"
+  },
+  "triggers": {
+    "keywords": ["github", "push", "upload", "publish"],
+    "task_types": ["repo_update", "publish"],
+    "blocked_by_intents": ["no_safety_checks"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "autonomy_level": "level_0",
+  "status": "active",
+  "contract": {
+    "requires_context": ["git.status", "fs.staged_files"],
+    "side_effects": "read_only",
+    "guarantees": ["mandatory_secret_scan_before_upload"]
+  },
+  "hooks": [
+    {
+      "id": "hook.git.status",
+      "phase": "before_render",
+      "required": true
+    },
+    {
+      "id": "hook.secrets.scan",
+      "phase": "before_action",
+      "required": true,
+      "blocks_on_fail": true
+    }
+  ],
+  "render": {
+    "S": "Before GitHub upload: check secrets and staged files.",
+    "O": "Before GitHub upload: inspect staged files and run secret scan. (Outcome: {{HOOK_RESULTS}})",
+    "X": "CRITICAL: Before GitHub upload, you MUST ensure no sensitive data is present. Secret scan and git status checks are mandatory. (Details: {{HOOK_RESULTS}})"
+  },
+  "token_estimate": {
+    "S": 15,
+    "O": 45,
+    "X": 90
+  }
+}

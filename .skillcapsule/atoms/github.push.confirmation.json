@@ -1,0 +1,36 @@
+{
+  "id": "github.push.confirmation",
+  "version": "0.1.0",
+  "kind": "external",
+  "source": {
+    "file": "skills/domains/github.md",
+    "section_id": "github-push-confirmation"
+  },
+  "triggers": {
+    "keywords": ["push", "publish", "upload"],
+    "blocked_by_intents": ["no_push", "dry_run"]
+  },
+  "activation": {
+    "risk_min": "high",
+    "auto_activate": true
+  },
+  "autonomy_level": "level_0",
+  "hooks": [
+    {
+      "id": "hook.github.push",
+      "phase": "after_action",
+      "required": true,
+      "requires_user_approval": true
+    }
+  ],
+  "render": {
+    "S": "Push to GitHub: Requires final confirmation.",
+    "O": "Pushing to branch {{BRANCH}} on remote {{REMOTE}}. This action requires explicit user approval.",
+    "X": "External Action: Pushing to GitHub. Target: {{REMOTE}}/{{BRANCH}}. This will be executed only after the secret scan passes and you provide final approval."
+  },
+  "token_estimate": {
+    "S": 12,
+    "O": 38,
+    "X": 75
+  }
+}

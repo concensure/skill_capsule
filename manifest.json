@@ -1,0 +1,117 @@
+{
+  "version": "1.0",
+  "skills": [
+    {
+      "id": "github",
+      "path": "skills/domains/github.md",
+      "token_cost": 250,
+      "triggers": ["upload to github", "publish", "git push", "github", "publish to github"],
+      "children": [],
+      "mcp_dependencies": ["git", "github"]
+    },
+    {
+      "id": "documents",
+      "path": "skills/domains/documents.md",
+      "token_cost": 380,
+      "triggers": ["document", "word", "pdf", "presentation", "pptx", "report", "write", "draft"],
+      "children": ["docx", "pdf", "pptx"],
+      "mcp_dependencies": ["filesystem"]
+    },
+    {
+      "id": "coding",
+      "path": "skills/domains/coding.md",
+      "token_cost": 420,
+      "triggers": ["code", "function", "implement", "bug", "refactor", "script", "debug", "build"],
+      "children": ["python", "typescript", "testing"],
+      "mcp_dependencies": ["filesystem", "bash_exec"]
+    },
+    {
+      "id": "data",
+      "path": "skills/domains/data.md",
+      "token_cost": 340,
+      "triggers": ["data", "csv", "excel", "spreadsheet", "analysis", "chart", "statistics", "dataset"],
+      "children": [],
+      "mcp_dependencies": ["filesystem", "python_exec"]
+    },
+    {
+      "id": "research",
+      "path": "skills/domains/research.md",
+      "token_cost": 290,
+      "triggers": ["research", "search", "find", "summarize", "compare", "explain", "what is"],
+      "children": [],
+      "mcp_dependencies": ["web_search"]
+    },
+    {
+      "id": "python",
+      "path": "skills/cascades/coding/python.md",
+      "token_cost": 320,
+      "triggers": ["python", ".py", "django", "flask", "fastapi", "pandas", "numpy"],
+      "parent": "coding"
+    },
+    {
+      "id": "typescript",
+      "path": "skills/cascades/coding/typescript.md",
+      "token_cost": 310,
+      "triggers": ["typescript", "javascript", ".ts", ".js", "node", "react", "next"],
+      "parent": "coding"
+    },
+    {
+      "id": "testing",
+      "path": "skills/cascades/coding/testing.md",
+      "token_cost": 280,
+      "triggers": ["test", "spec", "coverage", "jest", "pytest", "unit test"],
+      "parent": "coding"
+    },
+    {
+      "id": "docx",
+      "path": "skills/cascades/documents/docx.md",
+      "token_cost": 560,
+      "triggers": ["word", "docx", ".docx"],
+      "parent": "documents"
+    },
+    {
+      "id": "pdf",
+      "path": "skills/cascades/documents/pdf.md",
+      "token_cost": 480,
+      "triggers": ["pdf", ".pdf", "portable"],
+      "parent": "documents"
+    },
+    {
+      "id": "pptx",
+      "path": "skills/cascades/documents/pptx.md",
+      "token_cost": 510,
+      "triggers": ["pptx", "powerpoint", "slides", "presentation", "deck"],
+      "parent": "documents"
+    }
+  ],
+  "ml_offload_registry": [
+    {
+      "id": "sentiment_classification",
+      "triggers": ["classify sentiment", "positive/negative", "sentiment of"],
+      "backend": "distilbert-base-uncased-finetuned-sst-2",
+      "latency_ms": 12,
+      "accuracy": 0.93
+    },
+    {
+      "id": "language_detection",
+      "triggers": ["what language is", "detect language"],
+      "backend": "langdetect",
+      "latency_ms": 1,
+      "accuracy": 0.99
+    },
+    {
+      "id": "named_entity_extraction",
+      "triggers": ["extract entities", "find names", "identify people"],
+      "backend": "spacy_en_core_web_sm",
+      "latency_ms": 10,
+      "accuracy": 0.91
+    },
+    {
+      "id": "tabular_classification",
+      "triggers": ["predict column", "classify rows"],
+      "backend": "sklearn_random_forest",
+      "latency_ms": 8,
+      "accuracy": 0.88
+    }
+  ]
+}

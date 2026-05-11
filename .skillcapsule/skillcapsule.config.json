@@ -1,0 +1,75 @@
+{
+  "project_name": "Agent Skills",
+  "version": "0.1.0",
+  "base_dir": ".",
+  "capsule_dir": ".skillcapsule/capsules",
+  "atom_dir": ".skillcapsule/atoms",
+  "hook_dir": ".skillcapsule/hooks",
+  "outcome_dir": ".skillcapsule/outcomes",
+  "patch_dir": ".skillcapsule/patches",
+  "default_token_budget": 1000,
+  "context_budget": {
+    "default": 800,
+    "max": 1200,
+    "mandatory_budget_reserved": {
+      "low": 0.20,
+      "medium": 0.35,
+      "high": 0.50,
+      "critical": 0.65
+    },
+    "hook_summary_max_tokens": 200
+  },
+  "autonomy_levels": {
+    "level_0": "no_auto_change",
+    "level_1": "auto_compress_render",
+    "level_2": "auto_add_trigger",
+    "level_3": "auto_create_candidate_composite",
+    "level_4": "human_approval_required"
+  },
+  "routing_metrics": [
+    "false_positive_activation",
+    "missed_activation",
+    "user_overrode_capsule",
+    "hook_failed_after_activation",
+    "atom_loaded_but_unused",
+    "atom_manually_requested_later"
+  ],
+  "security": {
+    "sandbox_mode": "container",
+    "container_image": "skillcapsule/hook-runner:latest",
+    "network_access": "denied_by_default",
+    "resource_limits": {
+      "cpu_shares": 1024,
+      "memory_mb": 512,
+      "pids_limit": 50
+    }
+  },
+  "ab_testing": {
+    "enabled": true,
+    "traffic_split_pct": 10,
+    "min_samples_for_decision": 50,
+    "success_metric_weight": 0.7,
+    "token_weight": 0.3
+  },
+  "meta_evolution": {
+    "hot_path_analysis": false,
+    "log_on": "after_compile",
+    "promotion_rules": {
+      "min_pair_count": 10,
+      "min_distinct_days": 3,
+      "min_distinct_task_types": 2,
+      "max_failure_rate": 0.10,
+      "requires_replay_pass": true
+    },
+    "dry_run": {
+      "enabled": true,
+      "min_activations": 5,
+      "auto_promote_threshold": 0.90
+    }
+  },
+  "risk_thresholds": {
+    "low": 0.3,
+    "medium": 0.7,
+    "high": 1.0
+  }
+}
