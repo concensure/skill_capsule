@@ -1,0 +1,27 @@
+{
+  "id": "code.edit.safe",
+  "version": "1.0.0",
+  "contract": {
+    "requires_context": ["git.diff"],
+    "side_effects": "mutate",
+    "guarantees": ["edit_within_scope"]
+  },
+  "source": {
+    "file": "skills/domains/coding.md",
+    "section_id": "code-edit-safe"
+  },
+  "triggers": {
+    "keywords": ["edit", "fix", "update"],
+    "task_types": ["coding"]
+  },
+  "hooks": [
+    { "id": "hook.diff.scope_check", "phase": "after_action" },
+    { "id": "hook.verify.typecheck", "phase": "after_action" }
+  ],
+  "render": {
+    "S": "Safe Edit: Enforce scope and types.",
+    "O": "Verify your patch against allowed paths and run typechecks after editing.",
+    "X": "MANDATORY: Post-edit verification including scope guard and type system check. Results: {{HOOK_RESULTS}}"
+  },
+  "token_estimate": { "S": 15, "O": 45, "X": 90 }
+}

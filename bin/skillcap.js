@@ -138,4 +138,45 @@ program
     }
   });
 
+program
+  .command('test')
+  .description('Run routing and negative intent replay tests')
+  .action(async () => {
+    const configPath = path.join(process.cwd(), '.skillcapsule/skillcapsule.config.json');
+    const runtime = new SkillCapsuleRuntime(configPath);
+    console.log(chalk.blue('Running Replay Tests...\n'));
+
+    const results = await runtime.runReplayTests();
+    results.forEach(r => {
+      const status = r.passed ? chalk.green('PASS') : chalk.red('FAIL');
+      console.log(`${status} [${r.name}] (Matched: ${r.actual.join(', ') || 'none'})`);
+    });
+
+    if (results.some(r => !r.passed)) process.exit(1);
+  });
+
+program
+  .command('patch:validate')
+  .description('Validate a proposed atom patch')
+  .argument('<patch-file>', 'Path to the patch JSON file')
+  .action(async (patchFile) => {
+    const configPath = path.join(process.cwd(), '.skillcapsule/skillcapsule.config.json');
+    const runtime = new SkillCapsuleRuntime(configPath);
+    console.log(chalk.blue(`Validating patch: `) + chalk.bold(patchFile));
+
+    try {
+      const result = await runtime.validatePatch(patchFile);
+      if (result.status === 'PASS') {
+        console.log(chalk.bold.green('\nPatch is valid and safe to apply.'));
+      } else {
+        console.log(chalk.bold.red('\nPatch validation FAILED:'));
+        result.violations.forEach(v => console.log(`- ${v}`));
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(chalk.red('\nValidation error:'), err.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
