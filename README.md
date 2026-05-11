@@ -9,11 +9,26 @@
 - **GitHub Safety Skill:** Built-in protocol for scrubbing secrets and local data before publishing.
 - **Portable:** Works with any MCP-compatible AI coding assistant.
 
-## Quick Start
+## One-Line Install
 
-1. **View Skills:** Open `dashboard.html` in your browser.
-2. **Edit Skills:** Click "Edit Skill" in the dashboard to open the markdown file in VS Code.
-3. **Trigger Skills:** Use the keywords shown in the dashboard to invoke specific skills in your AI agent.
+Initialize Skill Capsule and generate agent recognition files in any project:
+
+```bash
+npx skillcap init --project "My Project Name"
+```
+
+This command will:
+1.  **Initialize Structure:** Create the `.skillcapsule/` directory and all subfolders.
+2.  **Generate Config:** Create a default `skillcapsule.config.json` with risk-sensitive budgeting.
+3.  **Enable Agent Recognition:** Automatically generate `CLAUDE.md`, `.cursorrules`, and `GEMINI.md` to ensure your AI assistant recognizes the skill registry immediately.
+
+## Agent Recognition
+
+Skill Capsule is recognized by all major AI coding assistants:
+- **Claude Code:** via `CLAUDE.md`
+- **Cursor:** via `.cursorrules`
+- **Gemini:** via `GEMINI.md`
+- **Codex / Kilo Code:** via atomic atom triggers in `.skillcapsule/atoms/`
 
 ## Dashboard
 
