@@ -19,6 +19,15 @@
     },
     "hook_summary_max_tokens": 200
   },
+  "artifact_retention": {
+    "enabled": true,
+    "max_total": 100,
+    "max_per_kind": {
+      "compose": 40,
+      "prepare": 30,
+      "verify": 30
+    }
+  },
   "autonomy_levels": {
     "level_0": "no_auto_change",
     "level_1": "auto_compress_render",
@@ -38,6 +47,33 @@
     "sandbox_mode": "container",
     "container_image": "skillcapsule/hook-runner:latest",
     "network_access": "denied_by_default",
+    "hook_runner": {
+      "mode": "process",
+      "enforce": false,
+      "executable": "docker",
+      "workspace_mount_path": "/workspace",
+      "network_mode": "none"
+    },
+    "hook_policy": {
+      "enforce_command_allowlist": true,
+      "deny_shell_metacharacters": true,
+      "require_local_node_scripts_under_hooks": true,
+      "allowed_env_passthrough": [],
+      "allowed_prefixes": {
+        "read_only": [
+          "git status",
+          "npm run typecheck",
+          "npm test",
+          "node .skillcapsule/hooks/scripts/"
+        ],
+        "read_write": [
+          "node .skillcapsule/hooks/scripts/"
+        ],
+        "restricted_exec": [
+          "git push"
+        ]
+      }
+    },
     "resource_limits": {
       "cpu_shares": 1024,
       "memory_mb": 512,
@@ -50,6 +86,10 @@
     "min_samples_for_decision": 50,
     "success_metric_weight": 0.7,
     "token_weight": 0.3
+  },
+  "observability": {
+    "log_dir": ".skillcapsule/logs",
+    "emit_jsonl": true
   },
   "meta_evolution": {
     "hot_path_analysis": false,

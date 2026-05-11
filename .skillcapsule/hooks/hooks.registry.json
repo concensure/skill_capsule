@@ -80,6 +80,7 @@
       "kind": "verify",
       "timeout_ms": 30000,
       "phases": ["after_action"],
+      "depends_on": ["hook.diff.scope_check"],
       "summary": {
         "mode": "pass_fail_findings",
         "max_tokens": 150
@@ -92,6 +93,7 @@
       "kind": "verify",
       "timeout_ms": 60000,
       "phases": ["after_action"],
+      "depends_on": ["hook.verify.typecheck"],
       "summary": {
         "mode": "pass_fail_findings",
         "max_tokens": 200
@@ -104,6 +106,7 @@
       "kind": "summarise",
       "timeout_ms": 5000,
       "phases": ["after_action"],
+      "depends_on": ["hook.diff.scope_check"],
       "summary": {
         "mode": "compact",
         "max_tokens": 150
@@ -116,6 +119,7 @@
       "kind": "verify",
       "timeout_ms": 5000,
       "phases": ["after_action"],
+      "depends_on": ["hook.diff.scope_check"],
       "summary": {
         "mode": "pass_fail_findings",
         "max_tokens": 120

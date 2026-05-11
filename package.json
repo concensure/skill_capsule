@@ -8,8 +8,12 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/server.js",
+    "start:stdio": "node dist/stdio.js",
+    "docker:build:hook-runner": "docker build -f Dockerfile.hook-runner -t skillcapsule/hook-runner:local .",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.js",
+    "test:container": "npm run build && node --test test/container.test.js"
   },
   "keywords": [
     "mcp",
@@ -21,11 +25,16 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
-    "fs-extra": "^11.3.5"
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "fs-extra": "^11.3.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   }

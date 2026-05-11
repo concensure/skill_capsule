@@ -1,26 +1,57 @@
 # Skill Capsule Architecture
 
-The system is a deterministic runtime that classifies tasks, matches atoms, executes hooks, and compiles a compact capsule.
+## Current runtime flow
 
-## 1. Core Runtime Flow (Hardened)
-1. **Input Task:** Detect task type, risk, intents, and **Edit Scope**.
-2. **Atom Matching:** Match atoms against formal **Contracts**; resolve dependencies.
-3. **Hook Planning (DAG):** Construct a dependency graph for hooks to handle complex ordering without races.
-4. **Sandboxed Pre-Render:** Execute `observe` hooks in restricted environments.
-5. **Compilation:** Enforce **Risk-Sensitive Token Budget**; generate **Activation Receipt**.
-6. **Patch Execution:** LLM proposes edits.
-7. **Sandboxed Verification:** Execute `verify` hooks in isolated containers.
-8. **Patch Receipt:** Final audit summary of the executed changes.
+1. Input task
+2. Classification
+3. Atom and capsule selection
+4. Dependency and conflict resolution
+5. Hook planning by phase with dependency-aware ordering
+6. `before_render` execution
+7. Optional `before_action` preparation execution with readiness receipt
+8. Render selection under budget
+9. Compiled capsule emission
+10. Artifact persistence for compose, prepare, and verify outputs
+11. Artifact index update for retrieval by kind, run ID, parent artifact ID, atom, status, task type, ID, recency, and latest success/failure helpers
+12. Artifact lineage reconstruction by shared run ID across compose, prepare, and verify
+13. Parent-child artifact links for retries and branch-aware follow-up flows
+14. Artifact summarization for operational counts by kind, status, and task type
+15. Retention pruning for bounded compiled storage
+16. Resume-plan derivation from existing artifacts for lifecycle continuation
+17. Optional `verify` or `patch apply` follow-up paths
 
-## 2. Evolution & A/B Testing Layer
-- **Metrics Dashboard:** Real-time tracking of atom performance.
-- **A/B Gating:** New skills are served to 10% of tasks initially.
-- **Semantic Diffing:** Validates that evolution patches maintain architectural invariants.
-- **Replay Suite:** Scalable, automated validation using a library of historical task scenarios.
+## Runtime modules
 
-## 3. Sandboxing & Safety Model
-- **Micro-VM/Container Integration:** High-risk hooks (Kind: `external`, `mutate`) are executed in ephemeral, non-networked (unless specified) environments.
-- **Policy-as-Code (PaC):** Automates approvals for low-risk changes, removing human bottlenecks for `level_1` and `level_2` autonomy.
-- **Hard Timeouts & Resource Quotas:** Prevents hook-based resource exhaustion.
+- `src/runtime.ts`
+  The core registry loader, matcher, hook runner, renderer, and patch engine.
+- `src/mcp.ts`
+  Thin MCP wrapper over the runtime.
+- `bin/skillcap.js`
+  CLI entrypoint.
 
+## Safety model implemented now
 
+- only registered hooks can execute
+- hook phases must match the registry declaration
+- hook commands must match the configured allowlist for their permission level
+- node-based hooks must execute from `.skillcapsule/hooks/scripts/`
+- hook processes execute without a shell
+- hook processes inherit only a minimal host environment plus explicit allowlisted passthrough variables
+- optional enforced container mode rewrites hook execution into container invocations with workspace mounts and resource limits
+- deployment packaging includes a concrete hook-runner Dockerfile and an optional real-Docker integration test path
+- artifact and index writes use temp-file rename semantics, with rollback if index persistence fails
+- runtime actions emit JSONL audit events, and public adapters normalize failures into stable error envelopes
+- deployment entrypoints validate config before startup and expose `/ready` metadata for HTTP mode
+- startup validation also rejects broken hook registries, missing local hook scripts, and unavailable host executables
+- HTTP mode can start in a degraded diagnostics-only state, with `/doctor` available and MCP returning a structured startup error
+- hook dependencies must resolve inside the active phase or the runtime fails fast
+- template substitution is allowlisted and shell-sensitive characters are rejected
+- timeouts are enforced through Node child-process execution
+- external hooks that require explicit approval are surfaced as `SKIP`
+- patch validation blocks hook mutations and unsupported operations
+
+## Remaining architecture work
+
+- hook DAG dependencies instead of pure phase ordering
+- stronger sandbox isolation for non-read-only hooks
+- optional replay suite expansion and richer outcome analytics

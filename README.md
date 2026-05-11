@@ -26,12 +26,17 @@ Skill Capsule delivers several key benefits:
 - Hook planning by phase with dependency-aware ordering, registry-only execution, permission checks, timeout enforcement, and output summaries
 - Hook command allowlisting, local hook-script path enforcement, and shell-free execution for registered hooks
 - Minimized hook process environment with explicit passthrough allowlisting
+- Optional enforced container hook runner mode with Docker-style execution planning
+- Enforced container mode can target a repo-local runner wrapper or a system container engine
+- Optional real-Docker hook-runner image and integration test path for CI or staging validation
 - Compact `S/O/X` render compilation with activation receipts
 - Explicit preflight execution for `before_render` and `before_action` hooks with readiness receipts
 - Compose, prepare, and verify runs persisted as JSON artifacts under `.skillcapsule/compiled/`
 - Atomic artifact and index writes with rollback on index persistence failure
 - Structured runtime error envelopes and JSONL audit logs under `.skillcapsule/logs/`
 - Startup config validation plus HTTP `/health` and `/ready` endpoints for deployment checks
+- Startup validation now checks hook registry integrity, local hook script existence, and required host executables
+- HTTP server now supports degraded startup: `/doctor` stays available and `/ready` returns `503` when config is invalid
 - Artifact index and retrieval support for recent compose/prepare/verify receipts
 - Artifact queries by kind, run ID, parent artifact ID, atom ID, status, and task type, plus latest/successful/failed lookup, lineage, summary counts, and resume hints
 - Configurable artifact retention with automatic and manual pruning
@@ -112,4 +117,6 @@ npm run build
 npm test
 npm start
 npm run start:stdio
+npm run docker:build:hook-runner
+npm run test:container
 ```

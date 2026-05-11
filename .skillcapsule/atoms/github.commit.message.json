@@ -1,0 +1,28 @@
+{
+  "id": "github.commit.message",
+  "version": "0.1.0",
+  "kind": "guidance",
+  "source": {
+    "file": "skills/domains/github.md",
+    "section_id": "github-commit-message"
+  },
+  "triggers": {
+    "keywords": ["commit", "message", "github", "push", "upload"],
+    "task_types": ["publish"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "render": {
+    "S": "Commit Message: Use a clear, scoped summary of the change.",
+    "O": "Commit Message: Write a concise subject line that states the intent of the upload, then include a brief body if context is needed.",
+    "X": "Commit Message: Before publishing, prepare a commit message that accurately summarizes the diff, calls out user-visible changes, and avoids overstating verification or scope."
+  },
+  "token_estimate": {
+    "S": 10,
+    "O": 28,
+    "X": 55
+  },
+  "status": "active"
+}
