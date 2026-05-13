@@ -15,10 +15,10 @@
     {
       "id": "hook.meta.analyze_patterns",
       "command": "node .skillcapsule/hooks/scripts/meta-analyzer.js",
-      "permission": "read_only",
+      "permission": "read_write",
       "kind": "observe",
-      "timeout_ms": 5000,
-      "phases": ["before_render"],
+      "timeout_ms": 10000,
+      "phases": ["after_action"],
       "summary": {
         "mode": "compact",
         "max_tokens": 150
@@ -123,6 +123,30 @@
       "summary": {
         "mode": "pass_fail_findings",
         "max_tokens": 120
+      }
+    },
+    {
+      "id": "hook.skillcap.index",
+      "command": "node bin/skillcap.js index",
+      "permission": "read_write",
+      "kind": "summarise",
+      "timeout_ms": 10000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 200
+      }
+    },
+    {
+      "id": "hook.skillcap.doctor",
+      "command": "node bin/skillcap.js doctor",
+      "permission": "read_only",
+      "kind": "verify",
+      "timeout_ms": 5000,
+      "phases": ["before_action"],
+      "summary": {
+        "mode": "pass_fail_findings",
+        "max_tokens": 150
       }
     }
   ]

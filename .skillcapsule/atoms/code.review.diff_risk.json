@@ -28,6 +28,7 @@
     "X": "Diff Risk: Your patch will be audited for minimality. We use `hook.review.diff_analysis` to detect 'unrelated edits' or high-risk complexity. Keeping patches atomic and focused is required."
   },
   "autonomy_level": "level_1",
+  "activation_mode": "inspect",
   "token_estimate": {
     "S": 14,
     "O": 38,

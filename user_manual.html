@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skill Capsule - User Manual</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #10b981;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #f59e0b;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* Sidebar / Menu */
+        #sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 260px;
+            background-color: #020617;
+            border-right: 1px solid #334155;
+            padding: 2rem 1rem;
+            z-index: 100;
+        }
+
+        #sidebar h2 {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        #sidebar nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #sidebar nav li {
+            margin-bottom: 0.75rem;
+        }
+
+        #sidebar nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s, padding-left 0.2s;
+            display: block;
+            padding: 0.5rem 0;
+        }
+
+        #sidebar nav a:hover, #sidebar nav a.active {
+            color: var(--primary);
+            padding-left: 0.5rem;
+        }
+
+        /* Main Content */
+        #main-content {
+            margin-left: 260px;
+            padding: 2rem 4rem;
+            max-width: 1200px;
+        }
+
+        section {
+            display: none; /* Controlled by JS for PPT effect */
+            padding: 4rem 0;
+            border-bottom: 1px solid #1e293b;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease-out;
+        }
+
+        section.visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        h1 { font-size: 3.5rem; margin-bottom: 1rem; color: var(--primary); }
+        h2 { font-size: 2.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--secondary); padding-left: 1rem; }
+        h3 { font-size: 1.75rem; margin-top: 2rem; color: var(--accent); }
+        p { line-height: 1.6; font-size: 1.1rem; color: var(--text-dim); }
+
+        .slide-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(79, 70, 229, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-card h4 { font-size: 1.5rem; margin: 0; color: var(--primary); }
+        .stat-card p { font-size: 0.9rem; margin: 0.5rem 0 0; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            background: var(--card-bg);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Mermaid */
+        .mermaid {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin: 2rem 0;
+        }
+
+        /* Prism override */
+        pre[class*="language-"] {
+            border-radius: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        .badge-primary { background: var(--primary); color: white; }
+        .badge-secondary { background: var(--secondary); color: white; }
+
+        /* Navigation Buttons */
+        .nav-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { background: #334155; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Skill Capsule</h2>
+    <nav>
+        <ul>
+            <li><a href="#intro" class="active" onclick="showSlide('intro')">Introduction</a></li>
+            <li><a href="#comparison" onclick="showSlide('comparison')">Skill vs. Capsule</a></li>
+            <li><a href="#security" onclick="showSlide('security')">Security & Trust</a></li>
+            <li><a href="#pillars" onclick="showSlide('pillars')">Core Pillars</a></li>
+            <li><a href="#mechanisms" onclick="showSlide('mechanisms')">Mechanisms & Flows</a></li>
+            <li><a href="#deep-dive" onclick="showSlide('deep-dive')">Architecture Deep-Dive</a></li>
+            <li><a href="#hooks" onclick="showSlide('hooks')">Hook System</a></li>
+            <li><a href="#cli" onclick="showSlide('cli')">CLI & Usage</a></li>
+            <li><a href="#creation" onclick="showSlide('creation')">Creating Capsules</a></li>
+            <li><a href="#best-practices" onclick="showSlide('best-practices')">Best Practices</a></li>
+            <li><a href="#evolution" onclick="showSlide('evolution')">Evolution (CIF)</a></li>
+            <li><a href="#recovery" onclick="showSlide('recovery')">Undo & Recovery</a></li>
+            <li><a href="#cases" onclick="showSlide('cases')">Use Cases</a></li>
+            <li><a href="#roadmap" onclick="showSlide('roadmap')">Roadmap</a></li>
+        </ul>
+    </nav>
+</div>
+
+<div id="main-content">
+    <!-- Slide 1: Introduction -->
+    <section id="intro" class="visible">
+        <div class="badge badge-primary">v0.1.0</div>
+        <h1>The Executable Skill Runtime</h1>
+        <p>Skill Capsule is not just another documentation format. It is a <strong>portable, atomic, and executable runtime</strong> for AI coding workflows.</p>
+        
+        <div class="grid">
+            <div class="stat-card">
+                <h4>Deterministic</h4>
+                <p>Ensures consistent, reproducible outcomes across diverse environments.</p>
+            </div>
+            <div class="stat-card">
+                <h4>Atomic</h4>
+                <p>Manages artifacts and state transitions as indivisible units.</p>
+            </div>
+            <div class="stat-card">
+                <h4>Governed</h4>
+                <p>Built-in audit logs and permission checks for enterprise-grade safety.</p>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Why it exists</h3>
+            <p>Traditional "Skill" documents are passive. They rely on the LLM to interpret instructions correctly. Skill Capsule takes the driver's seat, enforcing boundaries and performing pre-flight checks before any action is taken.</p>
+        </div>
+    </section>
+
+    <!-- Slide 2: Comparison -->
+    <section id="comparison">
+        <h2>Passive Skill vs. Active Capsule</h2>
+        <p>The fundamental shift from <em>"What can I do?"</em> to <em>"How do I execute this safely?"</em></p>
+        
+        <div class="slide-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Standard Skill (Passive)</th>
+                        <th>Skill Capsule (Active)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Execution</strong></td>
+                        <td>LLM-driven (Best effort)</td>
+                        <td>Runtime-driven (Enforced)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Parameter Parsing</strong></td>
+                        <td>Handled by LLM (Fuzzy)</td>
+                        <td>Structured & Validated</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tool Approval</strong></td>
+                        <td>Implicit/Manual</td>
+                        <td>Explicit (Gated/Policy-driven)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Safety</strong></td>
+                        <td>Narrative rules</td>
+                        <td>Hard-coded preflights & blocks</td>
+                    </tr>
+                    <tr>
+                        <td><strong>State</strong></td>
+                        <td>Session-bound</td>
+                        <td>Persistent, atomic artifacts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Governance</strong></td>
+                        <td>None (Implicit)</td>
+                        <td>Explicit audit logs & metrics</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dependencies</strong></td>
+                        <td>Manual mention</td>
+                        <td>Automated resolution</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Slide 2.5: Security & Trust -->
+    <section id="security">
+        <h2>Security & The Trust Model</h2>
+        <p>Why "Shell-Free" and "Isolation" matter in your local IDE.</p>
+        
+        <div class="grid">
+            <div class="slide-card">
+                <h3>1. Injection Prevention</h3>
+                <p>AI Agents can be "tricked" by prompt injections in untrusted code. Skill Capsule's <strong>Registry-Only</strong> model ensures that even if an AI is tricked, it can only run commands you've explicitly pre-approved.</p>
+            </div>
+            <div class="slide-card">
+                <h3>2. Supply Chain Trust</h3>
+                <p>When you download a capsule from the community, you don't need to audit every line. The <strong>Sandboxed Execution</strong> ensures the skill is a black box with restricted permissions (e.g., `read_only`), protecting your `.env` files and credentials.</p>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>3. Portability (Determinism)</h3>
+                <p>Ensures "Works on My Machine" actually means "Works Everywhere." Docker-backed isolation guarantees that a skill runs in the exact environment required, preventing drift between VS Code and CI/CD.</p>
+            </div>
+            <div class="slide-card">
+                <h3>4. No "Shell-Shock"</h3>
+                <p>By using shell-free execution, we prevent "Space-in-Filename" bugs from becoming "Wipe-my-Drive" disasters. Arguments are passed directly to the OS, bypassing the dangerous shell interpretation layer.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Pillars -->
+    <section id="pillars">
+        <h2>The Core Pillars</h2>
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Transparency</h3>
+                <p>Every step—from classification to verification—is recorded as a JSON artifact. You can inspect the "lineage" of any task to see exactly which hooks were run and why.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Atomic Capsules</h3>
+                <p>Capsules are bundles of "Atoms" (addressable capabilities). When a task is matched, only the necessary atoms are activated, keeping the context window clean and focused.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Guardrails</h3>
+                <p>Built-in negative intent detection blocks dangerous operations (like `git push` when explicitly forbidden) before they ever reach the execution phase.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Mechanisms -->
+    <section id="mechanisms">
+        <h2>Workflow Mechanisms</h2>
+        <p>The lifecycle of a Skill Capsule task follows a deterministic path:</p>
+        
+        <div class="mermaid">
+            graph LR
+            A[Input Task] --> B(Classify)
+            B --> C(Match Atoms)
+            C --> D(Compose)
+            D --> E(Prepare)
+            E --> F(Activate)
+            F --> G(Verify)
+            G --> H[Outcome Recorded]
+        </div>
+
+        <div class="slide-card">
+            <h3>Artifact Lineage</h3>
+            <p>Each run generates a unique `run_id`. All artifacts (Compose, Prepare, Verify) are linked together, allowing for partial resumes and deep forensics.</p>
+            <pre><code class="language-bash">skillcap artifact lineage run-shared-flow</code></pre>
+        </div>
+    </section>
+
+    <!-- Slide 4.5: Deep Dive -->
+    <section id="deep-dive">
+        <h2>Architecture Deep-Dive</h2>
+        <p>The engineering behind the runtime's reliability.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Artifact Indexing</h3>
+                <p>The runtime maintains a lightweight index of every `compose`, `prepare`, and `verify` run. This allows downstream tools to query lineage, latest successes, and resume hints without scanning the entire disk.</p>
+            </div>
+            <div class="slide-card">
+                <h3>S/O/X Render Model</h3>
+                <p>To fit into tight token budgets, skills can be rendered at three levels:
+                    <ul>
+                        <li><strong>S (Simple):</strong> Summary only.</li>
+                        <li><strong>O (Operational):</strong> Full parameters & hooks.</li>
+                        <li><strong>X (eXtended):</strong> Examples & deep documentation.</li>
+                    </ul>
+                </p>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Environment Passthrough</h3>
+            <p>Isolation doesn't mean "disconnected." The runtime uses an explicit <strong>Passthrough Allowlist</strong>. You choose exactly which host variables (like `PATH` or `GITHUB_TOKEN`) reach the hook process, ensuring zero-leakage by default.</p>
+        </div>
+    </section>
+
+    <!-- Slide 5: Hooks -->
+    <section id="hooks">
+        <h2>The Hook System</h2>
+        <p>Hooks are the "hands" of the capsule. They execute in defined phases with strict permissions.</p>
+        
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Phases</h3>
+                <ul>
+                    <li><strong>before_render:</strong> Environment setup & discovery.</li>
+                    <li><strong>before_action:</strong> Pre-flight safety checks (e.g., secret scans).</li>
+                    <li><strong>summarise:</strong> Post-action analysis.</li>
+                    <li><strong>verify:</strong> Validating the outcome (e.g., typecheck).</li>
+                </ul>
+            </div>
+            <div class="slide-card">
+                <h3>Permissions</h3>
+                <ul>
+                    <li><strong>read_only:</strong> Informational (git status).</li>
+                    <li><strong>read_write:</strong> Metadata updates (logging).</li>
+                    <li><strong>restricted_exec:</strong> Sensitive actions (git push).</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Sandboxed Execution</h3>
+            <p>Skill Capsule enforces shell-free execution, registry-only commands, and optional Docker-backed isolation to ensure hooks can't escape their boundaries.</p>
+        </div>
+    </section>
+
+    <!-- Slide 6: CLI -->
+    <section id="cli">
+        <h2>Command Center</h2>
+        <p>The `skillcap` CLI is the primary interface for managing and executing capsules.</p>
+        
+        <div class="slide-card">
+            <h3>Common Commands</h3>
+            <pre><code class="language-bash"># Initialize a new project
+skillcap init --project "My App"
+
+# Compose a new task (matches atoms & plans hooks)
+skillcap compose "Fix the type error in src/index.ts" --budget 800
+
+# Prepare for execution (runs secret scans & preflights)
+skillcap prepare code.verify.typecheck --task task.json
+
+# Apply a validated patch
+skillcap patch apply .skillcapsule/patches/pending/fix.json
+
+# Record the final result
+skillcap outcome record outcome.json</code></pre>
+        </div>
+    </section>
+
+    <!-- Slide 7: Creation Guide -->
+    <section id="creation">
+        <h2>Building Your Registry</h2>
+        <p>Learn how to define Atoms and package them into powerful Capsules.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>1. Define an Atom</h3>
+                <p>Create a JSON file in `.skillcapsule/atoms/`. Define triggers, risk levels, and associated hooks.</p>
+                <pre><code class="language-json">{
+  "id": "my.code.lint",
+  "name": "Auto-Linter",
+  "triggers": ["lint", "fix", "style"],
+  "hooks": ["hook.lint.run"]
+}</code></pre>
+            </div>
+            <div class="slide-card">
+                <h3>2. Package a Capsule</h3>
+                <p>In `.skillcapsule/capsules/`, group atoms into a workflow. Set a token budget to control context size.</p>
+                <pre><code class="language-json">{
+  "id": "my.safe.workflow",
+  "atoms": ["my.code.lint", "code.verify.typecheck"],
+  "budget": 600
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>3. Registry Synchronization</h3>
+            <p>After adding new files, always run <code>skillcap index</code> to rebuild the lookup tables and generate the CIF.</p>
+        </div>
+    </section>
+
+    <!-- Slide 7.5: Best Practices -->
+    <section id="best-practices">
+        <h2>Design Best Practices</h2>
+        <p>How to build robust, reusable Skill Capsules.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>1. Atom Granularity</h3>
+                <p>Keep atoms focused. Instead of <code>code.test.and.lint</code>, create two atoms: <code>code.test</code> and <code>code.lint</code>. This allows the runtime to mix-and-match them based on the task.</p>
+            </div>
+            <div class="slide-card">
+                <h3>2. Risk-Aware Triggers</h3>
+                <p>Use specific triggers for high-risk atoms. For example, don't trigger a <code>git.push</code> atom on the word "save"—require "push" or "publish" to prevent accidental activation.</p>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>3. Hook Idempotency</h3>
+                <p>Ensure your hooks (especially <code>verify</code> and <code>summarise</code>) can be run multiple times without side effects. This is critical for the <strong>Resume</strong> and <strong>Retry</strong> mechanisms.</p>
+            </div>
+            <div class="slide-card">
+                <h3>4. Budget Management</h3>
+                <p>Always set a <code>budget</code> in your capsules. A well-designed capsule should provide maximum value in under 800 tokens to leave room for the AI's actual work.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: Evolution (CIF) -->
+    <section id="evolution">
+        <h2>Self-Evolution (CIF)</h2>
+        <p>The <strong>Capsule Interop Framework (CIF)</strong> is the "DNA" of your skill registry.</p>
+        
+        <div class="grid">
+            <div class="slide-card">
+                <h3>What is CIF?</h3>
+                <p>A compressed representation of all triggers, risks, and dependencies. It allows the LLM to understand the entire registry without reading hundreds of JSON files.</p>
+            </div>
+            <div class="slide-card">
+                <h3>The Feedback Loop</h3>
+                <p>By using <code>outcome record</code>, you provide data for the <code>meta.evolution</code> capsule. It analyzes failures and proposes <strong>Patches</strong> to improve triggers or tighten security.</p>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>CIF Strengths</h3>
+            <ul>
+                <li><strong>Token Efficiency:</strong> Hundreds of skills summarized in a few hundred tokens.</li>
+                <li><strong>Fast Matching:</strong> Deterministic regex-based keyword matching.</li>
+                <li><strong>Structural Integrity:</strong> Ensures atoms and capsules are always in sync.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 9: Undo & Recovery -->
+    <section id="recovery">
+        <h2>The Safety Net</h2>
+        <p>Does Skill Capsule have an "Undo" button? <strong>Yes, but it's smarter.</strong></p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Atomic Rollbacks</h3>
+                <p>If the <code>verify</code> hook fails (e.g., tests break), the runtime can signal the editor to revert changes. Because every action is an <strong>Artifact</strong>, the "previous state" is always known.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Branching Artifacts</h3>
+                <p>You can "Resume" from any point in the lineage. If a <code>prepare</code> step fails, you don't start over—you fix the environment and <code>resume</code> from that specific receipt.</p>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Workflow Recommendation</h3>
+            <p>For your VS Code workflow: Use <strong>"Inspect Mode"</strong> for risky changes. The capsule will pause after <code>prepare</code>, show you the pre-flight results (secret scans, impact analysis), and wait for your manual <code>activate</code> command.</p>
+        </div>
+    </section>
+
+    <!-- Slide 10: Use Cases -->
+    <section id="cases">
+        <h2>Real-World Use Cases</h2>
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Guarded Refactoring</h3>
+                <p>Using the `code.safe.edit` capsule, the runtime automatically checks for public API breakages and runs related tests before allowing a refactor to be committed.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Safe Publish Flows</h3>
+                <p>The `github.upload.safe` capsule ensures that no secrets are accidentally leaked and that a human-readable commit message is generated before any push occurs.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Self-Evolving Registries</h3>
+                <p>The `meta.evolution` capsule monitors how skills are used and proposes "patches" to the registry, allowing the system to learn and optimize over time.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 11: Roadmap -->
+    <section id="roadmap">
+        <h2>State of the Project</h2>
+        <div class="badge badge-secondary">Active Development</div>
+        
+        <h3>Completed & Stable</h3>
+        <ul>
+            <li>Core Runtime & Registry (Capsules/Atoms/Hooks)</li>
+            <li>Deterministic Dependency Resolution</li>
+            <li>Artifact Persistence & Lineage Index</li>
+            <li>MCP Protocol Wrapper</li>
+            <li>CLI Toolset</li>
+        </ul>
+
+        <h3>Next Frontiers (Roadmap)</h3>
+        <div class="grid">
+            <div class="stat-card">
+                <h4>Hook DAG</h4>
+                <p>Moving from phases to a full Directed Acyclic Graph for complex hook dependencies.</p>
+            </div>
+            <div class="stat-card">
+                <h4>Deep Sandboxing</h4>
+                <p>Full gVisor or Firecracker integration for untrusted hook execution.</p>
+            </div>
+            <div class="stat-card">
+                <h4>Multi-Agent Sync</h4>
+                <p>Cross-capsule coordination for massive project-scale tasks.</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="nav-controls">
+    <button class="btn" id="prevBtn" onclick="moveSlide(-1)" disabled>Previous</button>
+    <button class="btn" id="nextBtn" onclick="moveSlide(1)">Next</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script>
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+
+    let currentSlideIndex = 0;
+    const slides = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('#sidebar nav a');
+    const slideIds = Array.from(slides).map(s => s.id);
+
+    function showSlide(id) {
+        slides.forEach(s => {
+            s.classList.remove('visible');
+            if (s.id === id) {
+                s.classList.add('visible');
+            }
+        });
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + id) {
+                link.classList.add('active');
+            }
+        });
+
+        currentSlideIndex = slideIds.indexOf(id);
+        updateButtons();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function moveSlide(direction) {
+        currentSlideIndex += direction;
+        if (currentSlideIndex < 0) currentSlideIndex = 0;
+        if (currentSlideIndex >= slideIds.length) currentSlideIndex = slideIds.length - 1;
+        showSlide(slideIds[currentSlideIndex]);
+    }
+
+    function updateButtons() {
+        document.getElementById('prevBtn').disabled = currentSlideIndex === 0;
+        document.getElementById('nextBtn').disabled = currentSlideIndex === slideIds.length - 1;
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') moveSlide(1);
+        if (e.key === 'ArrowLeft') moveSlide(-1);
+    });
+</script>
+</body>
+</html>

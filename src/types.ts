@@ -1,5 +1,8 @@
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type RenderLevel = 'S' | 'O' | 'X';
+export type ActivationMode = 'activate' | 'inspect' | 'block' | 'approval';
+export type PatchRiskClass = 'low' | 'medium' | 'high';
+export type GovernanceDecision = 'auto_approvable' | 'needs_human_approval' | 'rejected';
 export type HookPhase =
   | 'before_render'
   | 'before_action'
@@ -109,6 +112,7 @@ export interface AtomDefinition {
   render: Record<RenderLevel, string>;
   token_estimate: Record<RenderLevel, number>;
   autonomy_level?: string;
+  activation_mode?: ActivationMode;
 }
 
 export interface CapsuleDefinition {
@@ -156,6 +160,7 @@ export interface TaskPayload {
   intents?: string[];
   run_id?: string;
   parent_artifact_id?: string;
+  session_id?: string;
 }
 
 export interface TaskClassification {
@@ -180,6 +185,56 @@ export interface HookResult {
   blocked: boolean;
 }
 
+export interface ToolPlanEntry {
+  hook: string;
+  phase: HookPhase;
+  mode: ActivationMode;
+  approval: boolean;
+}
+
+export interface PatchGovernance {
+  decision: GovernanceDecision;
+  reason: string;
+  patch_risk_class: PatchRiskClass;
+  metrics_available: boolean;
+}
+
+export interface AtomGovernanceMetrics {
+  atom_id: string;
+  sample_count: number;
+  token_efficiency: number | null;
+  hook_pass_rate: number | null;
+  activation_accept_rate: number | null;
+  computed_at: string;
+}
+
+export interface GovernanceReport {
+  version: string;
+  computed_at: string;
+  atoms: AtomGovernanceMetrics[];
+}
+
+export interface MutationRecord {
+  patch_id: string | null;
+  mutation: string;
+  decision: 'accepted' | 'rejected' | 'pending';
+  decision_mode: 'auto' | 'human';
+  scorecard_before: Partial<Record<string, number | null>>;
+  scorecard_after: Partial<Record<string, number | null>>;
+  evidence_run_ids: string[];
+}
+
+export interface OutcomeRecord {
+  atom_id?: string | null;
+  task_type?: string | null;
+  activation_accepted: boolean | null;
+  matched_atoms: string[];
+  expected_atoms: string[] | null;
+  hook_results?: Array<{ id: string; status: string }> | null;
+  mutation_record?: MutationRecord | null;
+  [key: string]: unknown;
+}
+
 export interface ComposeResult {
   runId: string;
   task: TaskPayload;
@@ -201,7 +256,10 @@ export interface ComposeResult {
     capsules: string[];
     atoms: string[];
     hooks: Record<HookPhase, string[]>;
+    requires_approval: boolean;
+    approval_atoms: string[];
   };
+  tool_plan: ToolPlanEntry[];
   compiledCapsule: string;
   artifactPath?: string;
 }
@@ -321,6 +379,7 @@ export interface ArtifactPruneResult {
 export interface PatchValidationResult {
   status: 'PASS' | 'FAIL';
   violations: string[];
+  governance?: PatchGovernance;
 }
 
 export interface PatchProposalOp {

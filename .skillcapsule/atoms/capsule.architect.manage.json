@@ -1,0 +1,14 @@
+{
+  "id": "capsule.architect.manage",
+  "name": "Capsule Architect",
+  "version": "1.0.0",
+  "description": "Lifecycle management for Skill Capsules: indexing, validation, and health checks.",
+  "triggers": ["architect", "create capsule", "new atom", "index", "registry", "doctor"],
+  "task_types": ["meta_analysis", "system_optimization"],
+  "risk": "medium",
+  "mode": "activate",
+  "hooks": [
+    "hook.skillcap.doctor",
+    "hook.skillcap.index"
+  ]
+}

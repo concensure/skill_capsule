@@ -15,6 +15,7 @@
     "auto_activate": true
   },
   "autonomy_level": "level_0",
+  "activation_mode": "approval",
   "hooks": [
     {
       "id": "hook.github.push",

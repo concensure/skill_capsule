@@ -1,0 +1,16 @@
+{
+  "id": "code.guard.local",
+  "name": "Local Guard",
+  "version": "1.0.0",
+  "description": "Safety checks for local development: git status, secrets scan, and related tests.",
+  "triggers": ["guard", "safe", "check", "verify", "pre-commit"],
+  "task_types": ["coding", "bugfix", "feature"],
+  "risk": "low",
+  "mode": "activate",
+  "hooks": [
+    "hook.git.status",
+    "hook.secrets.scan",
+    "hook.verify.typecheck",
+    "hook.test.related"
+  ]
+}

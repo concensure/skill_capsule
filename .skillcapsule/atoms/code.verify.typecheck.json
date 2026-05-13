@@ -29,6 +29,7 @@
     "X": "Typecheck: Any proposed patch MUST satisfy the type system. A mandatory typecheck hook will run after your edits. Failures will trigger a diagnostic collection and require a fix before acceptance."
   },
   "autonomy_level": "level_1",
+  "activation_mode": "inspect",
   "token_estimate": {
     "S": 12,
     "O": 35,

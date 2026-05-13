@@ -1,0 +1,10 @@
+{
+  "id": "meta.capsule.architect",
+  "version": "0.1.0",
+  "name": "Capsule Architect Workflow",
+  "description": "Streamlines the creation, indexing, and health validation of the Skill Capsule registry.",
+  "atoms": [
+    "capsule.architect.manage"
+  ],
+  "budget": 400
+}

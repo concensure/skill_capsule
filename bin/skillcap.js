@@ -166,17 +166,247 @@ program
 
 program
   .command('index')
-  .description('List discovered capsules, atoms, and hooks')
+  .description('List discovered capsules, atoms, and hooks; generate CIF.md and INDEX.md')
   .action(() => {
     runCli(async () => {
       const SkillCapsuleRuntime = loadRuntime();
       const runtime = new SkillCapsuleRuntime(ensureInitialized());
-      const payload = {
-        capsules: runtime.listCapsules().map((item) => item.id),
-        atoms: runtime.listAtoms().map((item) => item.id),
-        hooks: runtime.listHooks().map((item) => item.id),
+      const capsules = runtime.listCapsules();
+      const atoms = runtime.listAtoms();
+      const hooks = runtime.listHooks();
+
+      console.log(JSON.stringify({
+        capsules: capsules.map((c) => c.id),
+        atoms: atoms.map((a) => a.id),
+        hooks: hooks.map((h) => h.id),
+      }, null, 2));
+
+      const skillcapsuleDir = path.join(process.cwd(), '.skillcapsule');
+
+      // Risk level ordering for max() comparisons
+      const RISK_ORDER = { low: 0, medium: 1, high: 2, critical: 3 };
+      // Activation mode ordering — higher = more restrictive
+      const MODE_ORDER = { activate: 0, inspect: 1, block: 2, approval: 3 };
+
+      function atomRisk(atom) {
+        return atom.activation?.risk_min ?? 'low';
+      }
+
+      function atomMode(atom) {
+        return atom.activation_mode ?? 'activate';
+      }
+
+      function maxRisk(riskList) {
+        return riskList.reduce((max, r) => {
+          return (RISK_ORDER[r] ?? 0) > (RISK_ORDER[max] ?? 0) ? r : max;
+        }, 'low');
+      }
+
+      function maxMode(modeList) {
+        return modeList.reduce((max, m) => {
+          return (MODE_ORDER[m] ?? 0) > (MODE_ORDER[max] ?? 0) ? m : max;
+        }, 'activate');
+      }
+
+      // Build atom-to-capsules membership map
+      const atomCapsuleMap = {};
+      for (const cap of capsules) {
+        for (const atomId of (cap.atoms || [])) {
+          if (!atomCapsuleMap[atomId]) atomCapsuleMap[atomId] = [];
+          atomCapsuleMap[atomId].push(cap.id);
+        }
+      }
+
+      const atomsInCapsules = new Set(capsules.flatMap((c) => c.atoms || []));
+      const atomById = Object.fromEntries(atoms.map((a) => [a.id, a]));
+
+      // ─── CIF.md ────────────────────────────────────────────────────────────
+      const cifLines = [
+        '<!-- generated: true -->',
+        '<!-- source: atoms/*.json capsules/*.json -->',
+        '<!-- do-not-edit: true -->',
+        '',
+        'intent_terms -> id | risk | deps | mode',
+        '',
+      ];
+
+      // Capsule rows: one row per capsule, keywords = union of all member atom keywords
+      for (const cap of capsules) {
+        const members = (cap.atoms || []).map((id) => atomById[id]).filter(Boolean);
+        const keywords = [...new Set(members.flatMap((a) => a.triggers?.keywords || []))];
+        const risk = maxRisk(members.map(atomRisk));
+        const mode = maxMode(members.map(atomMode));
+        cifLines.push(`${keywords.join('|')} -> ${cap.id} | ${risk} | capsule | ${mode}`);
+      }
+
+      if (capsules.length > 0) cifLines.push('');
+
+      // Standalone atom rows (atoms not bundled in any capsule)
+      for (const atom of atoms) {
+        if (atomsInCapsules.has(atom.id)) continue;
+        const keywords = atom.triggers?.keywords || [];
+        const risk = atomRisk(atom);
+        const deps = atom.dependencies?.length ? atom.dependencies.join('+') : 'none';
+        const mode = atomMode(atom);
+        cifLines.push(`${keywords.join('|')} -> ${atom.id} | ${risk} | ${deps} | ${mode}`);
+      }
+
+      await fs.writeFile(path.join(skillcapsuleDir, 'CIF.md'), cifLines.join('\n') + '\n');
+
+      // ─── INDEX.md ──────────────────────────────────────────────────────────
+      const ts = new Date().toISOString();
+      const indexLines = [
+        '# Skill Capsule Index',
+        '<!-- generated: true -->',
+        '<!-- source: atoms/*.json capsules/*.json -->',
+        '<!-- do-not-edit: true -->',
+        `<!-- generated-at: ${ts} -->`,
+        '',
+        '## Capsules',
+        '',
+      ];
+
+      for (const cap of capsules) {
+        indexLines.push(`### ${cap.id} (v${cap.version})`);
+        if (cap.description) indexLines.push(cap.description);
+        indexLines.push(`Atoms: ${(cap.atoms || []).join(', ')}`);
+        if (cap.default_budget) indexLines.push(`Budget: ${cap.default_budget}`);
+        indexLines.push('');
+      }
+
+      indexLines.push('## Atoms', '');
+
+      for (const atom of atoms) {
+        const inCaps = atomCapsuleMap[atom.id];
+        indexLines.push(`### ${atom.id} (v${atom.version})`);
+        if (atom.render?.S) indexLines.push(atom.render.S);
+        const kw = atom.triggers?.keywords?.join(', ') || '';
+        const tt = atom.triggers?.task_types?.join(', ') || '';
+        if (kw) indexLines.push(`Triggers: ${kw}`);
+        if (tt) indexLines.push(`Task types: ${tt}`);
+        indexLines.push(`Risk: ${atomRisk(atom)} | Mode: ${atomMode(atom)}`);
+        if (inCaps?.length) indexLines.push(`Capsule: ${inCaps.join(', ')}`);
+        if (atom.dependencies?.length) indexLines.push(`Depends: ${atom.dependencies.join(', ')}`);
+        indexLines.push('');
+      }
+
+      indexLines.push('## Hooks', '');
+
+      for (const hook of hooks) {
+        indexLines.push(`### ${hook.id}`);
+        indexLines.push(`Command: \`${hook.command}\``);
+        indexLines.push(`Permission: ${hook.permission} | Kind: ${hook.kind}`);
+        indexLines.push('');
+      }
+
+      // ─── Governance metrics ────────────────────────────────────────────
+      const metricsDir = path.join(skillcapsuleDir, 'metrics');
+      await fs.ensureDir(metricsDir);
+
+      const composeArtifacts = runtime.listArtifacts({ kind: 'compose', limit: 100 });
+      const verifyArtifacts = runtime.listArtifacts({ kind: 'verify', limit: 100 });
+
+      const outcomesDir = path.join(skillcapsuleDir, 'outcomes');
+      const outcomes = [];
+      if (fs.existsSync(outcomesDir)) {
+        for (const file of fs.readdirSync(outcomesDir).filter((f) => f.endsWith('.json'))) {
+          try { outcomes.push(await fs.readJson(path.join(outcomesDir, file))); } catch {}
+        }
+      }
+
+      const governanceAtoms = [];
+      for (const atom of atoms) {
+        const maxCost = atom.token_estimate?.X ?? 0;
+
+        // Token efficiency: 1 - (avg actual cost / max cost). Lower render level = higher efficiency.
+        const renderEntries = [];
+        for (const record of composeArtifacts) {
+          try {
+            const payload = await fs.readJson(record.path);
+            const entry = (payload.renderPlan ?? []).find((p) => p.atomId === atom.id);
+            if (entry) renderEntries.push(entry);
+          } catch {}
+        }
+        const tokenEfficiency = renderEntries.length >= 3 && maxCost > 0
+          ? parseFloat((1 - (renderEntries.reduce((s, e) => s + (e.tokenCost ?? 0), 0) / renderEntries.length / maxCost)).toFixed(3))
+          : null;
+
+        // Hook pass rate: passing after_action hooks / total, from verify artifacts for this atom.
+        const verifyForAtom = verifyArtifacts.filter((r) => r.atomId === atom.id);
+        let hookPassRate = null;
+        if (verifyForAtom.length >= 3) {
+          let pass = 0, total = 0;
+          for (const record of verifyForAtom) {
+            try {
+              const payload = await fs.readJson(record.path);
+              for (const result of (payload.hookResults?.after_action ?? [])) {
+                total++;
+                if (result.status === 'PASS') pass++;
+              }
+            } catch {}
+          }
+          hookPassRate = total > 0 ? parseFloat((pass / total).toFixed(3)) : null;
+        }
+
+        // Activation accept rate: from outcomes with Evo-1 fields.
+        const atomOutcomes = outcomes.filter(
+          (o) => o.atom_id === atom.id && o.activation_accepted !== null && o.activation_accepted !== undefined,
+        );
+        const activationAcceptRate = atomOutcomes.length >= 3
+          ? parseFloat((atomOutcomes.filter((o) => o.activation_accepted === true).length / atomOutcomes.length).toFixed(3))
+          : null;
+
+        governanceAtoms.push({
+          atom_id: atom.id,
+          sample_count: renderEntries.length,
+          token_efficiency: tokenEfficiency,
+          hook_pass_rate: hookPassRate,
+          activation_accept_rate: activationAcceptRate,
+          computed_at: new Date().toISOString(),
+        });
+      }
+
+      const governanceReport = {
+        version: '1.0',
+        computed_at: new Date().toISOString(),
+        atoms: governanceAtoms,
       };
-      console.log(JSON.stringify(payload, null, 2));
+      await fs.writeJson(path.join(metricsDir, 'governance.json'), governanceReport, { spaces: 2 });
+
+      // Append governance section to INDEX.md
+      const govLines = [
+        '',
+        '## Governance Metrics',
+        '<!-- computed from artifact and outcome history -->',
+        '',
+        '| Atom | Samples | Token Efficiency | Hook Pass Rate | Activation Accept Rate |',
+        '|---|---|---|---|---|',
+      ];
+      for (const m of governanceAtoms) {
+        const te = m.token_efficiency !== null ? m.token_efficiency.toFixed(2) : 'n/a';
+        const hp = m.hook_pass_rate !== null ? m.hook_pass_rate.toFixed(2) : 'n/a';
+        const aa = m.activation_accept_rate !== null ? m.activation_accept_rate.toFixed(2) : 'n/a';
+        govLines.push(`| ${m.atom_id} | ${m.sample_count} | ${te} | ${hp} | ${aa} |`);
+      }
+      await fs.appendFile(path.join(skillcapsuleDir, 'INDEX.md'), govLines.join('\n') + '\n');
+      // ───────────────────────────────────────────────────────────────────
+
+      console.log(chalk.green('Generated .skillcapsule/CIF.md, INDEX.md, and metrics/governance.json'));
+    });
+  });
+
+program
+  .command('score')
+  .description('Print per-atom governance scores from the last index run')
+  .action(() => {
+    runCli(async () => {
+      const metricsPath = path.join(process.cwd(), '.skillcapsule', 'metrics', 'governance.json');
+      if (!fs.existsSync(metricsPath)) {
+        console.error(chalk.yellow('No governance metrics found. Run "skillcap index" first.'));
+        process.exit(1);
+      }
+      const report = await fs.readJson(metricsPath);
+      console.log(JSON.stringify(report, null, 2));
     });
   });
 

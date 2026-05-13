@@ -23,5 +23,6 @@
     "O": "Verify your patch against allowed paths and run typechecks after editing.",
     "X": "MANDATORY: Post-edit verification including scope guard and type system check. Results: {{HOOK_RESULTS}}"
   },
-  "token_estimate": { "S": 15, "O": 45, "X": 90 }
+  "token_estimate": { "S": 15, "O": 45, "X": 90 },
+  "activation_mode": "activate"
 }

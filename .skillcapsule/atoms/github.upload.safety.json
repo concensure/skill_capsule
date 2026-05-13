@@ -15,6 +15,7 @@
     "task_types": ["publish"],
     "blocked_by_intents": ["no_safety_checks"]
   },
+  "activation_mode": "inspect",
   "hooks": [
     { "id": "hook.git.status", "phase": "before_render" },
     { "id": "hook.secrets.scan", "phase": "before_action", "blocks_on_fail": true }

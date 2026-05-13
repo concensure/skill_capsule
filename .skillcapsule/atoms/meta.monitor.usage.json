@@ -16,6 +16,7 @@
     "auto_activate": true
   },
   "autonomy_level": "level_1",
+  "activation_mode": "activate",
   "routing_metrics": {
     "false_positive_activation": 0,
     "missed_activation": 0,

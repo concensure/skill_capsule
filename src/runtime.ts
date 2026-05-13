@@ -12,16 +12,20 @@ import {
   AtomDefinition,
   CapsuleDefinition,
   ComposeResult,
+  GovernanceReport,
   HookDefinition,
   HookPermission,
   HookPhase,
   PatchApplyResult,
+  PatchGovernance,
   PatchProposal,
   PatchProposalOp,
+  PatchRiskClass,
   PreparationResult,
   HookRegistry,
   HookResult,
   PatchValidationResult,
+  ToolPlanEntry,
   VerificationResult,
   RenderLevel,
   RiskLevel,
@@ -42,6 +46,7 @@ const DEFAULT_ALLOWED_TEMPLATE_KEYS = new Set([
   'TASK',
   'TASK_TYPE',
   'RISK',
+  'SESSION_ID',
   'HOOK_RESULTS',
   'ACTIVATED_ATOMS',
   'ALLOWED_PATHS',
@@ -389,6 +394,7 @@ export class SkillCapsuleRuntime {
     return this.runAudited('compose', { requestedBudget }, async () => {
       const task = this.normalizeTask(taskInput);
       const runId = task.run_id ?? this.buildRunId();
+      task.session_id = task.session_id ?? runId;
       const parentArtifactId = this.resolveParentArtifactId(runId, task.parent_artifact_id);
       const classification = this.classifyTask(task);
       const { selections, selectedCapsules } = this.selectAtomsForTask(task, classification);
@@ -399,6 +405,11 @@ export class SkillCapsuleRuntime {
       const budget = this.resolveBudget(requestedBudget ?? task.budget, selectedCapsules);
       const renderPlan = this.buildRenderPlan(selections, classification, budget, hookResultMap);
       const compiledCapsule = this.compileCapsule(task, classification, renderPlan, hookResultMap);
+
+      const approvalAtoms = selections
+        .filter((s) => s.atom.activation_mode === 'approval')
+        .map((s) => s.atom.id);
+      const toolPlan = this.buildToolPlan(selections, hookPlan);
 
       const result: ComposeResult = {
         runId,
@@ -421,7 +432,10 @@ export class SkillCapsuleRuntime {
           capsules: selectedCapsules.map((capsule) => capsule.id),
           atoms: renderPlan.map((item) => item.atom.id),
           hooks: this.hookPlanToIds(hookPlan),
+          requires_approval: approvalAtoms.length > 0,
+          approval_atoms: approvalAtoms,
         },
+        tool_plan: toolPlan,
         compiledCapsule,
       };
 
@@ -463,6 +477,7 @@ export class SkillCapsuleRuntime {
       const atom = this.getAtom(atomId);
       const task = this.normalizeTask(taskInput ?? { description: `Prepare ${atomId}` });
       const runId = task.run_id ?? this.buildRunId();
+      task.session_id = task.session_id ?? runId;
       const parentArtifactId = this.resolveParentArtifactId(runId, task.parent_artifact_id);
       const classification = this.classifyTask(task);
       const hookPlan = this.planHooks([atom]);
@@ -510,6 +525,7 @@ export class SkillCapsuleRuntime {
       const atom = this.getAtom(atomId);
       const task = this.normalizeTask(taskInput ?? { description: `Verify ${atomId}` });
       const runId = task.run_id ?? this.buildRunId();
+      task.session_id = task.session_id ?? runId;
       const parentArtifactId = this.resolveParentArtifactId(runId, task.parent_artifact_id);
       const classification = this.classifyTask(task);
       const hookPlan = this.planHooks([atom]);
@@ -612,7 +628,102 @@ export class SkillCapsuleRuntime {
       validation.status = 'FAIL';
     }
 
+    validation.governance = this.computePatchGovernance(patch);
     return validation;
+  }
+
+  private readGovernanceReport(): GovernanceReport | null {
+    const metricsPath = path.join(this.capsuleRoot, 'metrics', 'governance.json');
+    if (!fs.existsSync(metricsPath)) {
+      return null;
+    }
+    try {
+      return JSON.parse(fs.readFileSync(metricsPath, 'utf-8')) as GovernanceReport;
+    } catch {
+      return null;
+    }
+  }
+
+  private patchRiskClass(patch: PatchProposal): PatchRiskClass {
+    const LOW_OPS = new Set([
+      'add_example', 'deprecate_example', 'append_evidence',
+      'tighten_activation', 'remove_trigger_keyword',
+    ]);
+    const MEDIUM_OPS = new Set(['replace_render', 'add_trigger_keyword', 'change_status']);
+    let highest: PatchRiskClass = 'low';
+    for (const op of patch.ops ?? []) {
+      if (MEDIUM_OPS.has(op.op) && highest === 'low') {
+        highest = 'medium';
+      }
+      if (!LOW_OPS.has(op.op) && !MEDIUM_OPS.has(op.op)) {
+        highest = 'high';
+      }
+    }
+    return highest;
+  }
+
+  private computePatchGovernance(patch: PatchProposal): PatchGovernance {
+    const riskClass = this.patchRiskClass(patch);
+    const report = this.readGovernanceReport();
+
+    if (!report) {
+      return {
+        decision: riskClass === 'high' ? 'needs_human_approval' : 'auto_approvable',
+        reason: 'No governance metrics available yet.',
+        patch_risk_class: riskClass,
+        metrics_available: false,
+      };
+    }
+
+    const metrics = report.atoms.find((m) => m.atom_id === patch.target_atom);
+    const hasEvidence = metrics !== undefined && metrics.sample_count >= 3;
+
+    if (riskClass === 'high') {
+      return {
+        decision: 'needs_human_approval',
+        reason: 'High-risk patch operation requires human review.',
+        patch_risk_class: riskClass,
+        metrics_available: hasEvidence,
+      };
+    }
+
+    if (!hasEvidence) {
+      return {
+        decision: riskClass === 'medium' ? 'needs_human_approval' : 'auto_approvable',
+        reason: 'Insufficient evidence samples for governance comparison.',
+        patch_risk_class: riskClass,
+        metrics_available: false,
+      };
+    }
+
+    return {
+      decision: 'auto_approvable',
+      reason: `${metrics!.sample_count} evidence samples. Low/medium risk patch passes ratchet.`,
+      patch_risk_class: riskClass,
+      metrics_available: true,
+    };
+  }
+
+  private buildToolPlan(
+    selections: AtomSelection[],
+    hookPlan: Record<HookPhase, PlannedHook[]>,
+  ): ToolPlanEntry[] {
+    const atomModeMap = new Map(
+      selections.map((s) => [s.atom.id, s.atom.activation_mode ?? 'activate']),
+    );
+    const toolPlan: ToolPlanEntry[] = [];
+    for (const phase of Object.keys(hookPlan) as HookPhase[]) {
+      for (const hook of hookPlan[phase]) {
+        const atomMode = atomModeMap.get(hook.atomId) ?? 'activate';
+        toolPlan.push({
+          hook: hook.id,
+          phase,
+          mode: hook.requiresUserApproval ? 'approval' : atomMode,
+          approval: hook.requiresUserApproval,
+        });
+      }
+    }
+    return toolPlan;
   }
 
   applyPatch(patchPath: string): PatchApplyResult {
@@ -665,6 +776,7 @@ export class SkillCapsuleRuntime {
         intents: taskInput.intents ?? [],
         run_id: taskInput.run_id,
         parent_artifact_id: taskInput.parent_artifact_id,
+        session_id: taskInput.session_id,
       };
     }
 
@@ -1156,6 +1268,7 @@ export class SkillCapsuleRuntime {
       SC_TASK: task.description,
       SC_TASK_TYPE: classification.taskType,
       SC_RISK: classification.risk,
+      SC_SESSION_ID: task.session_id ?? '',
       SC_ALLOWED_PATHS: (task.allowed_paths ?? ['*']).join(','),
       SC_READONLY_PATHS: (task.readonly_paths ?? []).join(','),
       SC_CHANGED_FILES: (task.changed_files ?? []).join(','),
@@ -1305,6 +1418,7 @@ export class SkillCapsuleRuntime {
       TASK: task.description,
       TASK_TYPE: classification.taskType,
       RISK: classification.risk,
+      SESSION_ID: task.session_id ?? '',
       HOOK_RESULTS: priorResults.map((item) => `${item.id}:${item.status}`).join(', ') || 'none',
       ACTIVATED_ATOMS: '',
       ALLOWED_PATHS: (task.allowed_paths ?? ['*']).join(','),
@@ -1431,6 +1545,15 @@ export class SkillCapsuleRuntime {
     }
     lines.push('');
 
+    const approvalAtoms = renderPlan
+      .filter((item) => item.atom.activation_mode === 'approval')
+      .map((item) => item.atom.id);
+    if (approvalAtoms.length > 0) {
+      lines.push('[APPROVAL REQUIRED]');
+      lines.push(`Atoms requiring explicit approval before execution: ${approvalAtoms.join(', ')}`);
+      lines.push('');
+    }
+
     for (const item of renderPlan) {
       const template = item.atom.render[item.renderLevel] ?? item.atom.render.S;
       lines.push(`Atom: ${item.atom.id} [${item.renderLevel}]`);
@@ -1459,6 +1582,7 @@ export class SkillCapsuleRuntime {
       TASK: task.description,
       TASK_TYPE: classification.taskType,
       RISK: classification.risk,
+      SESSION_ID: task.session_id ?? '',
       HOOK_RESULTS:
         (atom.hooks ?? [])
           .map((hook) => hookResults.get(hook.id))

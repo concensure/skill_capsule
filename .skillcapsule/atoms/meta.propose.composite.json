@@ -16,6 +16,16 @@
     "auto_activate": false
   },
   "autonomy_level": "level_3",
+  "activation_mode": "inspect",
+  "hooks": [
+    {
+      "id": "hook.meta.analyze_patterns",
+      "phase": "after_action",
+      "kind": "observe",
+      "required": false,
+      "blocks_on_fail": false
+    }
+  ],
   "status": "experimental",
   "render": {
     "S": "Evolution: Proposing a composite hook based on gated evidence.",

@@ -24,5 +24,6 @@
     "O": 28,
     "X": 55
   },
+  "activation_mode": "activate",
   "status": "active"
 }

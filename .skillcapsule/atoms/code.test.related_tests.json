@@ -28,6 +28,7 @@
     "X": "Related Tests: MANDATORY. All code changes must be verified by running relevant test suites. The `hook.test.related` will automatically identify and execute tests affected by your patch. (Outcome: {{HOOK_RESULTS}})"
   },
   "autonomy_level": "level_2",
+  "activation_mode": "activate",
   "token_estimate": {
     "S": 15,
     "O": 42,

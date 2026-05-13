@@ -1,0 +1,10 @@
+{
+  "id": "code.local.guard",
+  "version": "0.1.0",
+  "name": "Local Guard Workflow",
+  "description": "Enforces local development standards and safety before committing changes.",
+  "atoms": [
+    "code.guard.local"
+  ],
+  "budget": 500
+}

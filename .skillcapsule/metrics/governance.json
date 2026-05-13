@@ -1,0 +1,110 @@
+{
+  "version": "1.0",
+  "computed_at": "2026-05-13T04:15:31.558Z",
+  "atoms": [
+    {
+      "atom_id": "capsule.architect.manage",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.edit.safe",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.edit.scope_guard",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.guard.local",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.refactor.boundary_check",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.review.diff_risk",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.test.related_tests",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "code.verify.typecheck",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "github.commit.message",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "github.push.confirmation",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "github.upload.safety",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "meta.monitor.usage",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    },
+    {
+      "atom_id": "meta.propose.composite",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-13T04:15:31.558Z"
+    }
+  ]
+}

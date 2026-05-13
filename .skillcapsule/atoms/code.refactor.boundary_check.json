@@ -28,6 +28,7 @@
     "X": "Boundary Check: CRITICAL. This is a refactor task. You MUST ensure that public API contracts remain stable. A mandatory hook will detect changes to exported symbols and public interfaces. Unintended boundary crossings will be flagged for review."
   },
   "autonomy_level": "level_0",
+  "activation_mode": "inspect",
   "token_estimate": {
     "S": 18,
     "O": 45,
