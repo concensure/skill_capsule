@@ -146,7 +146,7 @@
 
         /* Mermaid */
         .mermaid {
-            background: white;
+            background: var(--card-bg);
             padding: 2rem;
             border-radius: 1rem;
             margin: 2rem 0;
@@ -198,6 +198,16 @@
 
 <div id="sidebar">
     <h2>Skill Capsule</h2>
+    <input type="text" id="searchInput" placeholder="Search sections..." style="
+        width: 90%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid var(--text-dim);
+        border-radius: 0.5rem;
+        background: var(--card-bg);
+        color: var(--text-main);
+        font-size: 0.9rem;
+    ">
     <nav>
         <ul>
             <li><a href="#intro" class="active" onclick="showSlide('intro')">Introduction</a></li>
@@ -213,6 +223,13 @@
             <li><a href="#evolution" onclick="showSlide('evolution')">Evolution (CIF)</a></li>
             <li><a href="#recovery" onclick="showSlide('recovery')">Undo & Recovery</a></li>
             <li><a href="#cases" onclick="showSlide('cases')">Use Cases</a></li>
+            <li><a href="#installation" onclick="showSlide('installation')">Installation & Setup</a></li>
+            <li><a href="#configuration" onclick="showSlide('configuration')">Configuration</a></li>
+            <li><a href="#troubleshooting" onclick="showSlide('troubleshooting')">Troubleshooting</a></li>
+            <li><a href="#api" onclick="showSlide('api')">API Reference</a></li>
+            <li><a href="#contributing" onclick="showSlide('contributing')">Community & Contributing</a></li>
+            <li><a href="#glossary" onclick="showSlide('glossary')">Glossary</a></li>
+            <li><a href="#changelog" onclick="showSlide('changelog')">Changelog</a></li>
             <li><a href="#roadmap" onclick="showSlide('roadmap')">Roadmap</a></li>
         </ul>
     </nav>
@@ -344,6 +361,10 @@
             <div class="slide-card">
                 <h3>Guardrails</h3>
                 <p>Built-in negative intent detection blocks dangerous operations (like `git push` when explicitly forbidden) before they ever reach the execution phase.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Token Efficiency</h3>
+                <p>Skill Capsule optimizes token usage through compressed representations and selective rendering, ensuring maximum utility within tight LLM budgets while preserving full functionality.</p>
             </div>
         </div>
     </section>
@@ -539,6 +560,22 @@ skillcap outcome record outcome.json</code></pre>
                 <li><strong>Structural Integrity:</strong> Ensures atoms and capsules are always in sync.</li>
             </ul>
         </div>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Evolution Algorithm</h3>
+                <p>The meta.evolution capsule analyzes outcome records using pattern recognition to identify failure modes. It proposes patches as JSON diffs that update atom triggers, risk levels, or hook dependencies, ensuring continuous improvement without manual intervention.</p>
+            </div>
+            <div class="slide-card">
+                <h3>Trust Building Process</h3>
+                <p>Every proposed evolution includes a detailed rationale and simulation results. Users can review changes before applying, with rollback capabilities ensuring that any evolution can be reverted if it introduces unexpected behavior.</p>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Transparency Features</h3>
+            <p>All evolution steps are logged with full audit trails. The CIF format allows inspection of how skills have evolved over time, building user confidence through verifiable improvement history and deterministic behavior.</p>
+        </div>
     </section>
 
     <!-- Slide 9: Undo & Recovery -->
@@ -582,7 +619,261 @@ skillcap outcome record outcome.json</code></pre>
         </div>
     </section>
 
-    <!-- Slide 11: Roadmap -->
+    <!-- Slide 11: Installation & Setup -->
+    <section id="installation">
+        <h2>Installation & Setup</h2>
+        <p>Get started with Skill Capsule in your development environment.</p>
+
+        <div class="slide-card">
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Node.js 18+ or Python 3.8+</li>
+                <li>Git for version control</li>
+                <li>Docker (optional, for isolated execution)</li>
+            </ul>
+        </div>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Quick Install</h3>
+                <pre><code class="language-bash">npm install -g skillcapsule
+# or
+pip install skillcapsule</code></pre>
+            </div>
+            <div class="slide-card">
+                <h3>Project Initialization</h3>
+                <pre><code class="language-bash">skillcap init
+# This creates .skillcapsule/ directory structure</code></pre>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Verification</h3>
+            <p>After installation, verify with:</p>
+            <pre><code class="language-bash">skillcap --version
+skillcap registry list</code></pre>
+        </div>
+    </section>
+
+    <!-- Slide 12: Configuration -->
+    <section id="configuration">
+        <h2>Configuration</h2>
+        <p>Customize Skill Capsule behavior for your workflow.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Global Config</h3>
+                <p>Located at <code>~/.skillcapsule/config.json</code></p>
+                <pre><code class="language-json">{
+  "default_budget": 800,
+  "sandbox_mode": true,
+  "log_level": "info"
+}</code></pre>
+            </div>
+            <div class="slide-card">
+                <h3>Project Config</h3>
+                <p>In <code>.skillcapsule/config.json</code></p>
+                <pre><code class="language-json">{
+  "registry_path": "./.skillcapsule/registry/",
+  "environment_vars": ["PATH", "HOME"]
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Environment Variables</h3>
+            <ul>
+                <li><code>SKILLCAP_SANDBOX=1</code> - Enable Docker isolation</li>
+                <li><code>SKILLCAP_DEBUG=1</code> - Verbose logging</li>
+                <li><code>SKILLCAP_REGISTRY_URL</code> - Custom registry endpoint</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 13: Troubleshooting -->
+    <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <p>Common issues and their solutions.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Hook Execution Fails</h3>
+                <p>Check permissions and environment:</p>
+                <pre><code class="language-bash">skillcap hook debug my.hook.id
+# Verify passthrough variables</code></pre>
+            </div>
+            <div class="slide-card">
+                <h3>Capsule Not Matching</h3>
+                <p>Update CIF index:</p>
+                <pre><code class="language-bash">skillcap index rebuild
+# Check trigger keywords</code></pre>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Getting Help</h3>
+            <ul>
+                <li>Run <code>skillcap --help</code> for command reference</li>
+                <li>Check logs in <code>.skillcapsule/logs/</code></li>
+                <li>Join our Discord for community support</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 14: API Reference -->
+    <section id="api">
+        <h2>API Reference</h2>
+        <p>Technical details for programmatic integration.</p>
+
+        <div class="slide-card">
+            <h3>Core Classes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>CapsuleRegistry</code></td>
+                        <td>Manages atom and capsule definitions</td>
+                    </tr>
+                    <tr>
+                        <td><code>ExecutionEngine</code></td>
+                        <td>Handles task classification and execution</td>
+                    </tr>
+                    <tr>
+                        <td><code>ArtifactManager</code></td>
+                        <td>Persists and retrieves execution artifacts</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Key Methods</h3>
+                <ul>
+                    <li><code>compose(task: string)</code> - Match and plan execution</li>
+                    <li><code>prepare(runId: string)</code> - Run pre-flight checks</li>
+                    <li><code>activate(runId: string)</code> - Execute the plan</li>
+                    <li><code>verify(runId: string)</code> - Validate outcomes</li>
+                </ul>
+            </div>
+            <div class="slide-card">
+                <h3>Events</h3>
+                <ul>
+                    <li><code>capsule.matched</code> - When atoms are selected</li>
+                    <li><code>hook.executed</code> - After each hook run</li>
+                    <li><code>artifact.created</code> - When results are recorded</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 15: Community & Contributing -->
+    <section id="contributing">
+        <h2>Community & Contributing</h2>
+        <p>Join the Skill Capsule ecosystem.</p>
+
+        <div class="grid">
+            <div class="slide-card">
+                <h3>Contributing</h3>
+                <ul>
+                    <li>Report bugs on GitHub Issues</li>
+                    <li>Submit pull requests for features</li>
+                    <li>Share your custom capsules</li>
+                </ul>
+            </div>
+            <div class="slide-card">
+                <h3>Resources</h3>
+                <ul>
+                    <li>Documentation: <code>docs.skillcapsule.dev</code></li>
+                    <li>Registry: <code>registry.skillcapsule.dev</code></li>
+                    <li>Discord: Join for discussions</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="slide-card">
+            <h3>Code of Conduct</h3>
+            <p>We follow a strict code of conduct. All contributions must respect security boundaries and promote safe AI tooling practices.</p>
+        </div>
+    </section>
+
+    <!-- Slide 16: Glossary -->
+    <section id="glossary">
+        <h2>Glossary</h2>
+        <p>Key terms and concepts in Skill Capsule.</p>
+
+        <div class="slide-card">
+            <dl style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+                <dt><strong>Atom</strong></dt>
+                <dd>The smallest unit of executable capability in Skill Capsule, containing triggers, hooks, and permissions.</dd>
+
+                <dt><strong>Capsule</strong></dt>
+                <dd>A collection of atoms bundled into a reusable workflow with a defined token budget.</dd>
+
+                <dt><strong>CIF (Capsule Interop Framework)</strong></dt>
+                <dd>A compressed representation of the skill registry that enables efficient LLM understanding and matching.</dd>
+
+                <dt><strong>Hook</strong></dt>
+                <dd>Executable scripts that run in specific phases (before_render, before_action, summarise, verify) with defined permissions.</dd>
+
+                <dt><strong>Artifact</strong></dt>
+                <dd>Persistent records of execution states, including compose, prepare, activate, and verify results.</dd>
+
+                <dt><strong>Registry</strong></dt>
+                <dd>The collection of all defined atoms and capsules, maintained as JSON files in .skillcapsule/.</dd>
+
+                <dt><strong>Passthrough</strong></dt>
+                <dd>Explicitly allowed environment variables that can be accessed by hooks, ensuring zero-leakage by default.</dd>
+
+                <dt><strong>Sandbox</strong></dt>
+                <dd>Isolated execution environment using Docker or similar to prevent hooks from affecting the host system.</dd>
+            </dl>
+        </div>
+    </section>
+
+    <!-- Slide 17: Changelog -->
+    <section id="changelog">
+        <h2>Changelog</h2>
+        <p>Version history and updates.</p>
+
+        <div class="slide-card">
+            <h3>v0.1.0 - Initial Release</h3>
+            <ul>
+                <li>Core runtime and registry system</li>
+                <li>Basic CLI toolset</li>
+                <li>Artifact persistence and lineage tracking</li>
+                <li>MCP protocol wrapper</li>
+                <li>Deterministic dependency resolution</li>
+            </ul>
+        </div>
+
+        <div class="slide-card">
+            <h3>v0.2.0 - Evolution & Trust</h3>
+            <ul>
+                <li>CIF framework for self-evolution</li>
+                <li>Enhanced transparency features</li>
+                <li>Improved trust-building processes</li>
+                <li>Bug fixes and performance optimizations</li>
+            </ul>
+        </div>
+
+        <div class="slide-card">
+            <h3>Upcoming (v0.3.0)</h3>
+            <ul>
+                <li>Hook DAG for complex dependencies</li>
+                <li>Deep sandboxing with gVisor integration</li>
+                <li>Multi-agent synchronization</li>
+                <li>Expanded API reference</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 18: Roadmap -->
     <section id="roadmap">
         <h2>State of the Project</h2>
         <div class="badge badge-secondary">Active Development</div>
@@ -665,6 +956,15 @@ skillcap outcome record outcome.json</code></pre>
     document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight' || e.key === ' ') moveSlide(1);
         if (e.key === 'ArrowLeft') moveSlide(-1);
+    });
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        navLinks.forEach(link => {
+            const text = link.textContent.toLowerCase();
+            link.parentElement.style.display = text.includes(query) ? 'block' : 'none';
+        });
     });
 </script>
 </body>
