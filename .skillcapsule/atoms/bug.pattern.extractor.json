@@ -1,0 +1,40 @@
+{
+  "id": "bug.pattern.extractor",
+  "version": "0.1.0",
+  "kind": "analysis",
+  "source": {
+    "file": "atoms/bug.md",
+    "section_id": "bug-pattern-extractor"
+  },
+  "triggers": {
+    "keywords": ["bug fixed", "postmortem", "learn from error", "race condition", "useEffect"],
+    "task_types": ["bug_analysis", "learning"],
+    "blocked_by_intents": ["no_learning"]
+  },
+  "activation": {
+    "risk_min": "low",
+    "auto_activate": true
+  },
+  "autonomy_level": "level_2",
+  "activation_mode": "automatic",
+  "hooks": [
+    {
+      "id": "hook.bug.ast_analyzer",
+      "phase": "before_action",
+      "kind": "analyze",
+      "required": true,
+      "blocks_on_fail": true
+    }
+  ],
+  "status": "active",
+  "render": {
+    "S": "Extracting bug pattern from fixed code.",
+    "O": "Analyzing AST shape of problematic code pattern (e.g., race condition in useEffect).",
+    "X": "Performing AST analysis on before/after code diffs. Identifying structural patterns like missing cleanup functions, improper dependency arrays, or async operations without proper handling."
+  },
+  "token_estimate": {
+    "S": 30,
+    "O": 60,
+    "X": 120
+  }
+}

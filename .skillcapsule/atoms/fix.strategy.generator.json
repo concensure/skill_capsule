@@ -1,0 +1,40 @@
+{
+  "id": "fix.strategy.generator",
+  "version": "0.1.0",
+  "kind": "generation",
+  "source": {
+    "file": "atoms/fix.md",
+    "section_id": "fix-strategy-generator"
+  },
+  "triggers": {
+    "keywords": ["generate fix", "correction strategy", "healing code"],
+    "task_types": ["fix_generation", "learning"],
+    "blocked_by_intents": ["no_auto_fix"]
+  },
+  "activation": {
+    "risk_min": "medium",
+    "auto_activate": true
+  },
+  "autonomy_level": "level_2",
+  "activation_mode": "automatic",
+  "hooks": [
+    {
+      "id": "hook.fix.strategy_builder",
+      "phase": "before_action",
+      "kind": "generate",
+      "required": true,
+      "blocks_on_fail": true
+    }
+  ],
+  "status": "active",
+  "render": {
+    "S": "Generating correction strategy for identified bug pattern.",
+    "O": "Creating fix logic based on before/after code comparison (e.g., adding useEffect cleanup).",
+    "X": "Developing AST transformation rules and correction algorithms. Ensuring fix preserves code semantics while eliminating the bug (e.g., race condition prevention through proper async handling)."
+  },
+  "token_estimate": {
+    "S": 40,
+    "O": 80,
+    "X": 160
+  }
+}

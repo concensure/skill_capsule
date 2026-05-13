@@ -1,0 +1,47 @@
+{
+  "id": "learning.atom.creator",
+  "version": "0.1.0",
+  "kind": "creation",
+  "source": {
+    "file": "atoms/learning.md",
+    "section_id": "learning-atom-creator"
+  },
+  "triggers": {
+    "keywords": ["create atom", "self-healing", "generate capsule"],
+    "task_types": ["atom_creation", "learning"],
+    "blocked_by_intents": ["no_registry_modification"]
+  },
+  "activation": {
+    "risk_min": "high",
+    "auto_activate": false
+  },
+  "autonomy_level": "level_3",
+  "activation_mode": "inspect",
+  "hooks": [
+    {
+      "id": "hook.atom.json_generator",
+      "phase": "after_action",
+      "kind": "create",
+      "required": true,
+      "blocks_on_fail": true
+    },
+    {
+      "id": "hook.registry.integrator",
+      "phase": "verify",
+      "kind": "integrate",
+      "required": true,
+      "blocks_on_fail": false
+    }
+  ],
+  "status": "experimental",
+  "render": {
+    "S": "Creating new self-healing atom from learned pattern.",
+    "O": "Generating atom JSON with pattern matcher and correction hook for future bug prevention.",
+    "X": "Crafting complete atom definition including triggers (keywords from bug context), hooks (AST matcher + fixer), and metadata. Integrating into registry for CIF evolution."
+  },
+  "token_estimate": {
+    "S": 50,
+    "O": 100,
+    "X": 200
+  }
+}

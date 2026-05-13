@@ -1,0 +1,18 @@
+{
+  "id": "meta.postmortem.learning",
+  "version": "0.1.0",
+  "type": "capsule",
+  "description": "Learns from production bugs to create self-healing code patterns. Analyzes fixed issues and generates reusable atoms for automatic bug prevention.",
+  "atoms": [
+    "bug.pattern.extractor",
+    "fix.strategy.generator",
+    "learning.atom.creator"
+  ],
+  "default_budget": 600,
+  "risk_policy": {
+    "low": "S",
+    "medium": "O",
+    "high": "X"
+  },
+  "status": "experimental"
+}

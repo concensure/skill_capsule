@@ -148,6 +148,54 @@
         "mode": "pass_fail_findings",
         "max_tokens": 150
       }
+    },
+    {
+      "id": "hook.bug.ast_analyzer",
+      "command": "node .skillcapsule/hooks/scripts/bug-ast-analyzer.js",
+      "permission": "read_only",
+      "kind": "analyze",
+      "timeout_ms": 10000,
+      "phases": ["before_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 200
+      }
+    },
+    {
+      "id": "hook.fix.strategy_builder",
+      "command": "node .skillcapsule/hooks/scripts/fix-strategy-builder.js",
+      "permission": "read_write",
+      "kind": "generate",
+      "timeout_ms": 15000,
+      "phases": ["before_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 250
+      }
+    },
+    {
+      "id": "hook.atom.json_generator",
+      "command": "node .skillcapsule/hooks/scripts/atom-json-generator.js",
+      "permission": "read_write",
+      "kind": "create",
+      "timeout_ms": 10000,
+      "phases": ["after_action"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 150
+      }
+    },
+    {
+      "id": "hook.registry.integrator",
+      "command": "node bin/skillcap.js index --integrate",
+      "permission": "read_write",
+      "kind": "integrate",
+      "timeout_ms": 5000,
+      "phases": ["verify"],
+      "summary": {
+        "mode": "compact",
+        "max_tokens": 100
+      }
     }
   ]
 }
