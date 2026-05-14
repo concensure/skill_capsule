@@ -1,0 +1,21 @@
+{
+  "id": "stage.dev.velocity",
+  "name": "Stage: DEV (Velocity)",
+  "version": "1.0.0",
+  "description": "Environment for rapid iteration. Prioritizes developer velocity and knowledge capture over strict enforcement.",
+  "composition": [
+    "code.edit.safe",
+    "meta.monitor.usage",
+    "code.guard.local",
+    "learning.atom.creator"
+  ],
+  "governance": {
+    "risk_tolerance": "high",
+    "enforcement_level": "advisory",
+    "smartlearn_mode": "observe_all"
+  },
+  "triggers": {
+    "environment": "local",
+    "keywords": ["feat", "refactor", "experiment", "poc"]
+  }
+}

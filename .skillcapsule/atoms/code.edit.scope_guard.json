@@ -6,6 +6,8 @@
     "file": "atoms/coding.md",
     "section_id": "code-edit-scope-guard"
   },
+  "locs_level": 1,
+  "capability_id": "code.edit.scope_guard",
   "triggers": {
     "keywords": ["edit", "change", "modify", "update", "fix"],
     "task_types": ["coding", "bugfix", "feature"],
@@ -24,6 +26,20 @@
       "blocks_on_fail": true
     }
   ],
+  "locs_capsule": {
+    "capability_id": "code.edit.scope_guard",
+    "capability_name": "Code Edit Scope Guard",
+    "capability_summary": "Ensure that edits remain within the explicitly authorized file scope.",
+    "state_model": "external-boundary",
+    "side_effects": "explicit",
+    "determinism": "deterministic-if-environment-stable",
+    "risk_level": "medium",
+    "approval_policy": "approval-required",
+    "audit_level": "standard",
+    "swappable_atom_group": "code-edit-scope-guard",
+    "compatibility": ["git"],
+    "success_evidence": ["diff_scope_check_passed"]
+  },
   "render": {
     "S": "Scope Guard: Enforcing allowed edit paths.",
     "O": "Scope Guard: Your edits will be checked against the allowed paths for this task. (Allowed: {{ALLOWED_PATHS}})",

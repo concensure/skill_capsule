@@ -1,4 +1,4 @@
-# CLAIR Hosting Guide
+# Skill Capsule Hosting Guide
 
 ## Option 1: stdio (Local — Recommended to Start)
 
@@ -11,9 +11,9 @@ No server needed. Claude Desktop or Claude Code runs the MCP as a subprocess.
 ```json
 {
   "mcpServers": {
-    "clair": {
+    "skill-capsule": {
       "command": "node",
-      "args": ["/absolute/path/to/clair-mcp-server/dist/index.js"]
+      "args": ["/absolute/path/to/skill-capsule/dist/index.js"]
     }
   }
 }
@@ -56,7 +56,7 @@ fly deploy
 
 Add a `fly.toml`:
 ```toml
-app = "clair-mcp-server"
+app = "skill-capsule-mcp"
 primary_region = "sjc"
 
 [build]
@@ -110,7 +110,7 @@ Then in Claude Desktop config:
 ```json
 {
   "mcpServers": {
-    "clair": {
+    "skill-capsule": {
       "url": "https://your-app.railway.app/mcp"
     }
   }

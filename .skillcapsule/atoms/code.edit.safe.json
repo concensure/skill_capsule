@@ -10,6 +10,8 @@
     "file": "skills/domains/coding.md",
     "section_id": "code-edit-safe"
   },
+  "locs_level": 1,
+  "capability_id": "code.edit.safety",
   "triggers": {
     "keywords": ["edit", "fix", "update"],
     "task_types": ["coding"]
@@ -18,6 +20,20 @@
     { "id": "hook.diff.scope_check", "phase": "after_action" },
     { "id": "hook.verify.typecheck", "phase": "after_action" }
   ],
+  "locs_capsule": {
+    "capability_id": "code.edit.safety",
+    "capability_name": "Scoped Code Edit Safety",
+    "capability_summary": "Verify that code edits stay within allowed scope and satisfy the type system.",
+    "state_model": "external-boundary",
+    "side_effects": "explicit",
+    "determinism": "deterministic-if-environment-stable",
+    "risk_level": "medium",
+    "approval_policy": "approval-required",
+    "audit_level": "standard",
+    "swappable_atom_group": "code-edit-safety",
+    "compatibility": ["git", "typescript"],
+    "success_evidence": ["diff_scope_check_passed", "typecheck_passed"]
+  },
   "render": {
     "S": "Safe Edit: Enforce scope and types.",
     "O": "Verify your patch against allowed paths and run typechecks after editing.",

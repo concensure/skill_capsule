@@ -10,6 +10,8 @@
     "file": "skills/domains/github.md",
     "section_id": "github-upload-safety"
   },
+  "locs_level": 1,
+  "capability_id": "github.publish.preflight",
   "triggers": {
     "keywords": ["github", "push", "upload"],
     "task_types": ["publish"],
@@ -20,6 +22,20 @@
     { "id": "hook.git.status", "phase": "before_render" },
     { "id": "hook.secrets.scan", "phase": "before_action", "blocks_on_fail": true }
   ],
+  "locs_capsule": {
+    "capability_id": "github.publish.preflight",
+    "capability_name": "GitHub Publish Preflight",
+    "capability_summary": "Verify repository safety signals before a GitHub publish or push operation.",
+    "state_model": "external-boundary",
+    "side_effects": "read-only",
+    "determinism": "deterministic-if-environment-stable",
+    "risk_level": "medium",
+    "approval_policy": "auto-if-readonly",
+    "audit_level": "standard",
+    "swappable_atom_group": "github-publish-preflight",
+    "compatibility": ["git", "github"],
+    "success_evidence": ["git_status_collected", "secret_scan_passed"]
+  },
   "render": {
     "S": "Before GitHub upload: check secrets and git status.",
     "O": "Run secret scan and inspect git status before pushing to origin. Outcome: {{HOOK_RESULTS}}",

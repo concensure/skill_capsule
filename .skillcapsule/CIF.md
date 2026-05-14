@@ -1,13 +1,14 @@
+<!-- contract validation: PASS -->
 <!-- generated: true -->
 <!-- source: atoms/*.json capsules/*.json -->
 <!-- do-not-edit: true -->
 
-intent_terms -> id | risk | deps | mode
+intent_terms -> capability_id | risk | group | mode | atoms
 
- -> code.local.guard | low | capsule | activate
-edit|change|modify|update|fix|refactor|restructure|move|rename|clean up|test|verify|check|regression|typescript|rust|go|java|type|compilation|patch|diff|review|risk -> code.safe.edit | high | capsule | inspect
-github|push|upload|commit|message|publish -> github.upload.safe | high | capsule | approval
- -> meta.capsule.architect | low | capsule | activate
-skill|hook|usage|pattern|evolve|optimize|propose hook|new capsule|composite skill -> meta.evolution | medium | capsule | inspect
-
-edit|fix|update -> code.edit.safe | low | none | activate
+change|edit|fix|modify|update -> code.edit.scope_guard | risk:medium | group:code-edit-scope-guard | mode:inspect | atoms:code.edit.scope_guard
+check|fix|regression|test|verify -> code.verify.related_tests | risk:medium | group:code-verify-related-tests | mode:activate | atoms:code.test.related_tests
+commit|github|message|push|upload -> github.commit.message | risk:low | group:github-commit-message | mode:activate | atoms:github.commit.message
+compilation|go|java|rust|type|typescript -> code.verify.typecheck | risk:medium | group:code-verify-typecheck | mode:inspect | atoms:code.verify.typecheck
+edit|fix|update -> code.edit.safety | risk:medium | group:code-edit-safety | mode:activate | atoms:code.edit.safe
+github|push|upload -> github.publish.preflight | risk:medium | group:github-publish-preflight | mode:inspect | atoms:github.upload.safety
+publish|push|upload -> github.publish.execution | risk:high | group:github-publish-execution | mode:approval | atoms:github.push.confirmation

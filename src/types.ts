@@ -3,6 +3,7 @@ export type RenderLevel = 'S' | 'O' | 'X';
 export type ActivationMode = 'activate' | 'inspect' | 'block' | 'approval';
 export type PatchRiskClass = 'low' | 'medium' | 'high';
 export type GovernanceDecision = 'auto_approvable' | 'needs_human_approval' | 'rejected';
+export type CapabilityLevel = 0 | 1 | 2;
 export type HookPhase =
   | 'before_render'
   | 'before_action'
@@ -65,6 +66,17 @@ export interface SkillCapsuleConfig {
     log_dir?: string;
     emit_jsonl?: boolean;
   };
+  temporal?: {
+    enabled?: boolean;
+    provider?: 'timetrace';
+    workspace_dir?: string;
+    project_dir?: string;
+    binary?: string;
+    binary_args?: string[];
+    allow_cargo_run?: boolean;
+    record_selection_events?: boolean;
+    record_audit_receipts?: boolean;
+  };
 }
 
 export interface AtomTriggerRules {
@@ -94,6 +106,36 @@ export interface AtomContract {
   guarantees?: string[];
 }
 
+export type StateModel = 'external-boundary' | 'internal-state' | 'stateless';
+export type Determinism = 'deterministic' | 'deterministic-if-environment-stable' | 'non-deterministic';
+export type SideEffect = 'none' | 'read-only' | 'explicit' | 'implicit';
+export type ApprovalPolicy = 'auto' | 'auto-if-readonly' | 'approval-required' | 'human-review-required';
+export type AuditLevel = 'none' | 'minimal' | 'standard' | 'strict';
+
+export interface LocsCapsuleProfile {
+  // Required fields
+  capability_id: string;
+  capability_name: string;
+  capability_summary: string;
+  state_model: StateModel;
+  side_effects: SideEffect;
+  determinism: Determinism;
+  risk_level: RiskLevel;
+  approval_policy: ApprovalPolicy;
+  audit_level: AuditLevel;
+  swappable_atom_group: string;
+  compatibility: string[];
+  success_evidence: string[];
+  
+  // Optional fields
+  token_efficiency?: number;
+  benchmark_ref?: string;
+  dependency_depth?: number;
+  capability_score?: number;
+  temporal_tracking?: boolean;
+  temporal_scope?: string[];
+}
+
 export interface AtomDefinition {
   id: string;
   version: string;
@@ -112,7 +154,11 @@ export interface AtomDefinition {
   render: Record<RenderLevel, string>;
   token_estimate: Record<RenderLevel, number>;
   autonomy_level?: string;
+  locs_level?: CapabilityLevel;
+  locs_module_ref?: string;
   activation_mode?: ActivationMode;
+  capability_id?: string;
+  locs_capsule?: LocsCapsuleProfile;
 }
 
 export interface CapsuleDefinition {
@@ -404,4 +450,215 @@ export interface PatchApplyResult {
   archivedPatchPath?: string;
   newVersion: string;
   appliedOps: string[];
+}
+export interface CIFEntry {
+  intent_terms: string[];
+  capability_id: string;
+  risk: RiskLevel;
+  swappable_atom_group?: string;
+  mode: ActivationMode;
+  compatible_atoms: string[];
+}
+
+export interface AtomRoutingSummary {
+  id: string;
+  file: string;
+  version: string;
+  capability_level: CapabilityLevel;
+  capability_id?: string;
+  triggers: AtomTriggerRules;
+  activation?: AtomActivation;
+  dependencies?: string[];
+  conflicts?: string[];
+  activation_mode?: ActivationMode;
+  locs_capsule?: LocsCapsuleProfile;
+}
+
+export interface CapsuleRoutingSummary {
+  id: string;
+  version: string;
+  type?: string;
+  atoms: string[];
+  default_budget?: number;
+  status?: string;
+}
+
+export interface RoutingManifest {
+  version: string;
+  generated_at: string;
+  atoms: AtomRoutingSummary[];
+  capsules: CapsuleRoutingSummary[];
+}
+
+export interface ValidationViolation {
+  atom_id: string;
+  rule: string;
+  severity: 'error' | 'warning';
+  message: string;
+  remediation?: string;
+}
+
+export interface ContractValidationResult {
+  atom_id: string;
+  valid: boolean;
+  violations: ValidationViolation[];
+  warnings: ValidationViolation[];
+}
+
+export interface CapabilityInspectionAtom {
+  id: string;
+  version: string;
+  capability_level: CapabilityLevel;
+  risk_level: RiskLevel | 'unknown';
+  approval_policy: ApprovalPolicy | 'unknown';
+  audit_level: AuditLevel | 'unknown';
+  compatibility: string[];
+  swappable_group?: string;
+  success_evidence: string[];
+  governance_valid: boolean;
+  contract_violations: string[];
+  contract_warnings: string[];
+}
+
+export interface CapabilityInspectionResult {
+  capability_id: string;
+  atom_count: number;
+  atoms: CapabilityInspectionAtom[];
+}
+
+export interface CapabilitySelectionCandidate {
+  atom_id: string;
+  version: string;
+  capability_level: CapabilityLevel;
+  governance_valid: boolean;
+  eligible: boolean;
+  selected: boolean;
+  compatibility_score: number;
+  matched: number;
+  missing: string[];
+  rejection_reasons: string[];
+}
+
+export interface CapabilitySelectionResult {
+  capability_id: string;
+  selected_atom?: string;
+  selected_version?: string;
+  compatibility_score: number;
+  compatibility_matched: number;
+  compatibility_constraints: string[];
+  all_candidates: CapabilitySelectionCandidate[];
+  temporal_warnings?: string[];
+}
+
+export interface AtomAuditResult {
+  atom_id: string;
+  capability_level: CapabilityLevel;
+  valid: boolean;
+  violations: ValidationViolation[];
+  warnings: ValidationViolation[];
+  locs_capsule: LocsCapsuleProfile | null;
+  checks: AuditCheck[];
+  temporal_warnings?: string[];
+  evidence_summary: {
+    latest_prepare_status?: string;
+    latest_verify_status?: string;
+    latest_success_artifact_id?: string;
+    success_evidence: string[];
+    satisfied_evidence: string[];
+    missing_evidence: string[];
+  };
+}
+
+export interface AuditCheck {
+  name:
+    | 'contract_compliance'
+    | 'dependency_integrity'
+    | 'execution_evidence'
+    | 'approval_compliance'
+    | 'unexpected_file_changes'
+    | 'exit_status';
+  status: 'PASS' | 'WARN' | 'FAIL';
+  detail: string;
+}
+
+export interface TimeTraceEventRecord {
+  event_id: string;
+  event_type: string;
+  timestamp: string;
+  repo: string;
+  files: string[];
+  symbols: unknown[];
+  diff_loc: number | null;
+  bug_signature: string | null;
+  capability_id: string | null;
+  atom_id: string | null;
+  verified: string;
+  evidence: {
+    test_command: string | null;
+    test_status: string | null;
+    commit_hash: string | null;
+    linked_events: string[];
+    outcome: string | null;
+    score: number | null;
+    notes: string[];
+  };
+  summary: string | null;
+}
+
+export interface TimeTraceComparisonStats {
+  total_events: number;
+  audit_count: number;
+  approved_count: number;
+  rejected_count: number;
+  verified_count: number;
+  rollback_count: number;
+  mutation_count: number;
+  approval_rate: number;
+  evidence_quality: string;
+  has_recent_rollback: boolean;
+  confidence: string;
+}
+
+export interface CapabilityHistoryResult {
+  capability_id: string;
+  provider: 'timetrace';
+  workspace_path: string;
+  temporal_tracking_declared: boolean;
+  temporal_scopes: string[];
+  event_count: number;
+  events: TimeTraceEventRecord[];
+  warnings: string[];
+}
+
+export interface CapabilityEvolutionResult {
+  capability_id: string;
+  provider: 'timetrace';
+  workspace_path: string;
+  temporal_tracking_declared: boolean;
+  temporal_scopes: string[];
+  stats: TimeTraceComparisonStats;
+  recommendation: 'promote' | 'stay' | 'demote';
+  confidence_gate: 'high' | 'medium' | 'low';
+  reasoning: string[];
+  warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Token-efficiency discipline types  (T12)
+// ---------------------------------------------------------------------------
+
+export interface TokenEfficiencyViolation {
+  atom_id: string;
+  check: string;
+  severity: 'error' | 'warning';
+  message: string;
+}
+
+export interface TokenEfficiencyReport {
+  checked_at: string;
+  atom_count: number;
+  violations: TokenEfficiencyViolation[];
+  warnings: TokenEfficiencyViolation[];
+  total_contract_bytes: number;
+  oversized_atoms: string[];
 }

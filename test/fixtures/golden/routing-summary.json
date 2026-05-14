@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "atom_ids": [
+    "bug.pattern.extractor",
+    "capsule.architect.manage",
+    "code.edit.safe",
+    "code.edit.scope_guard",
+    "code.guard.local",
+    "code.refactor.boundary_check",
+    "code.review.diff_risk",
+    "code.test.related_tests",
+    "code.verify.typecheck",
+    "fix.strategy.generator",
+    "github.commit.message",
+    "github.push.confirmation",
+    "github.upload.safety",
+    "learning.atom.creator",
+    "meta.monitor.usage",
+    "meta.propose.composite",
+    "meta.registry.validator"
+  ],
+  "capability_atoms": [
+    {
+      "id": "code.edit.safe",
+      "capability_id": "code.edit.safety",
+      "capability_level": 1,
+      "activation_mode": "activate"
+    },
+    {
+      "id": "code.edit.scope_guard",
+      "capability_id": "code.edit.scope_guard",
+      "capability_level": 1,
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "code.test.related_tests",
+      "capability_id": "code.verify.related_tests",
+      "capability_level": 1,
+      "activation_mode": "activate"
+    },
+    {
+      "id": "code.verify.typecheck",
+      "capability_id": "code.verify.typecheck",
+      "capability_level": 1,
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "github.commit.message",
+      "capability_id": "github.commit.message",
+      "capability_level": 1,
+      "activation_mode": "activate"
+    },
+    {
+      "id": "github.push.confirmation",
+      "capability_id": "github.publish.execution",
+      "capability_level": 1,
+      "activation_mode": "approval"
+    },
+    {
+      "id": "github.upload.safety",
+      "capability_id": "github.publish.preflight",
+      "capability_level": 1,
+      "activation_mode": "inspect"
+    }
+  ],
+  "capsule_ids": [
+    "code.local.guard",
+    "code.safe.edit",
+    "github.upload.safe",
+    "meta.capsule.architect",
+    "meta.evolution",
+    "meta.postmortem.learning",
+    "stage.dev.velocity",
+    "stage.prod.hardened",
+    "stage.qa.integrity"
+  ],
+  "stage_capsule_ids": [
+    "stage.dev.velocity",
+    "stage.prod.hardened",
+    "stage.qa.integrity"
+  ]
+}

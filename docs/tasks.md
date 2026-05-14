@@ -1,190 +1,265 @@
 # Skill Capsule - Task Document
 
-Three goals: retain project shape, no token bloat, reliable governance.
+Primary goals:
+
+- preserve lightweight atom/capsule shape
+- add deterministic capability contracts via LOCS-Capsule Profile v1
+- keep retrieval token cost low with progressive reveal
+- enforce governance and auditability without metadata bloat
 
 ---
 
-## Claude Skill parity - capsule render phase
+## Integration backlog (LOCS + Skill Capsule)
 
-The capsule render phase has six steps. Coverage status per step:
+### T1 - Add LOCS-Capsule Profile v1 schema support
+**Status: completed**
+Implement additive Level 1 capability metadata in atom schema and validation.
 
-### Step 1 - Parse capsule atom
-**Status: complete.**
-Atom matching and capsule selection are fully implemented. The runtime loads atoms from `.skillcapsule/atoms/`, matches by trigger keywords and task type, resolves dependencies and conflicts, and pulls parent capsules into the active set.
+Deliverables:
 
-### Step 2 - Resolve variables
-**Status: partial.**
+- optional top-level `capability_id`
+- optional `locs_capsule` object with required/optional fields from `docs/design.md`
+- schema-level exclusion of heavy full-LOCS requirements for Level 1 atoms
 
-| Variable | Status |
-|---|---|
-| `${capsule_dir}` | Resolved - mapped to `config.capsule_dir` at runtime init |
-| `${project_root}` | Resolved - `process.cwd()` at runtime init |
-| `${session_id}` | Missing - no session identity is threaded through the runtime |
-| `{{HOOK_RESULTS}}` | Resolved - hook summaries injected into render templates |
-| `{{ALLOWED_PATHS}}` | Resolved - passed via task payload |
+### T2 - Capability-level validation rules
+**Status: completed**
+Add deterministic validators for governance contract completeness.
 
-**Task:** Add `session_id` to `TaskPayload` and thread it through as a resolvable template variable. Default to the compose `runId` if not supplied by the caller.
+Validation must fail when:
 
-### Step 3 - Parse arguments
-**Status: complete.**
-Task arguments are carried by `TaskPayload`: description, budget, task_type, allowed_paths, readonly_paths, changed_files, remote, branch, intents, run_id, parent_artifact_id.
+- executable atom has no `approval_policy`
+- high-risk atom has no `audit_level`
+- swappable atom has no `capability_id`
+- dependencies unresolved
+- `risk_level` conflicts with `side_effects`
 
-### Step 4 - Apply approval policy
-**Status: partial.**
+Implementation notes:
 
-Approval is declared per hook via `requires_user_approval: true`. When this flag is set, the hook surfaces as `SKIP` in results rather than executing. The calling LLM or human operator must re-invoke after granting approval.
+- schema parsing must happen before governance validation
+- top-level `capability_id` and `locs_capsule.capability_id` must not diverge
+- under-classified risk versus side-effect declarations are hard failures, not advisory warnings
 
-What is missing: the approval gate is not checked at the compose level. An atom with `activation_mode: approval` can be composed into a capsule without any gate being applied at output time.
+### T3 - Upgrade `skillcap index` for contract routing
+**Status: completed**
+Extend index generation to:
 
-**Task:** During `compose`, check `activation_mode` on matched atoms. For atoms with `activation_mode: approval`, include an explicit approval notice in the compiled capsule output and mark the receipt with `requires_approval: true`. This keeps the gate visible without blocking compose.
+- generate `.skillcapsule/CIF.md` from trigger metadata
+- include capability routing fields (`capability_id`, risk, group, mode)
+- include `compatible_atoms` derived from `swappable_atom_group`
+- validate capability contracts and dependencies during indexing
+- keep CIF as generated-only artifact (no manual edits)
 
-### Step 5 - Inject dynamic context
-**Status: partial.**
+Implementation notes:
 
-Hook results are injected into render templates via `{{HOOK_RESULTS}}` substitution. This covers the main dynamic context path.
+- the CLI must call the shared TypeScript indexer instead of reimplementing CIF generation inline
+- contract validation results must be visible in the generated artifact and process exit behavior
+- output ordering must be deterministic across runs
 
-What is missing: no structured tool plan is emitted alongside the compiled capsule. The current output is a text render card plus a JSON receipt. A tool plan (which MCP tools to call, in what order, with what inputs) is not generated.
+### T4 - Add `skillcap inspect <capability_id>`
+**Status: completed**
+Command output:
 
-**Task:** Add an optional `tool_plan` field to the `ComposeResult`. Populate it from the hook plan - each planned hook with its phase, permission level, and approval requirement becomes a tool plan entry. This is additive and does not change the existing compiled capsule format.
+- compatible atoms for the capability
+- risk level and approval policy expectations
+- audit level and success evidence expectations
+- incompatibility reasons per candidate atom
 
-### Step 6 - Emit final prompt / tool plan
-**Status: mostly complete.**
+Implemented behavior:
 
-The compiled capsule is the final prompt output. The activation receipt captures the full execution plan. The tool plan (Step 5) is the missing piece.
+- shared runtime-backed capability inspection (`inspectCapability`) powers the CLI command
+- per-atom output includes contract/governance validity plus rule-level violations and warnings
+- inspection remains deterministic and contract-centric rather than recomputing ad hoc CLI views
 
-**Task:** Emit `tool_plan` as a structured array in the compose artifact:
+### T5 - Add `skillcap select <capability_id>`
+**Status: completed**
+Implement deterministic atom selection by:
 
-```json
-{
-  "tool_plan": [
-    { "hook": "hook.git.status", "phase": "before_render", "mode": "inspect", "approval": false },
-    { "hook": "hook.secrets.scan", "phase": "before_action", "mode": "inspect", "approval": false },
-    { "hook": "hook.github.push", "phase": "after_action", "mode": "approval", "approval": true }
-  ]
-}
-```
+- capability match
+- swappable group membership
+- project compatibility constraints
+- governance eligibility
 
-This makes Skill Capsule a drop-in for Claude Skill tool-plan emission without changing the hot path.
+Selection output includes selected atom + deterministic rejection reasons for non-selected candidates.
+
+Implemented behavior:
+
+- selection is now runtime-backed (`selectCapability`) rather than CLI-local logic
+- candidates are ranked deterministically by eligibility, compatibility score, matched constraints, then atom id
+- output includes `eligible`, `selected`, `governance_valid`, and explicit `rejection_reasons`
+- when no candidate satisfies project constraints, the command returns no selected atom instead of silently choosing an incompatible one
+
+### T6 - Add `skillcap audit <atom_id>`
+**Status: completed**
+Implement capability-aware evidence audit.
+
+Checks:
+
+- execution evidence (`success_evidence`)
+- approval compliance
+- dependency integrity
+- contract compliance
+- unexpected file changes
+- exit status
+- optional AST validation for code-edit atoms
+
+Implemented behavior:
+
+- shared runtime-backed audit (`auditAtom`) powers the CLI command
+- audit reports include deterministic check records for contract compliance, dependency integrity, execution evidence, approval compliance, unexpected file changes, and exit status
+- evidence is inferred from the latest prepare/verify artifacts and hook outcomes without introducing a database or heavyweight audit store
+- approval-sensitive atoms surface explicit warnings when approval receipts are not yet modeled in compiled artifacts
+
+### T7 - Progressive reveal enforcement
+**Status: completed**
+Apply strict load-order discipline in runtime:
+
+1. CIF
+2. capability contract
+3. selected atom metadata
+4. supporting scripts/files only if execution is required
+5. optional temporal lookup only when risk/evidence gates require
+
+Add guardrails that block full-registry/full-history preload in default flows.
+
+Implemented behavior:
+
+- `skillcap index` now emits `.skillcapsule/routing.manifest.json` as a compact routing summary alongside `CIF.md`
+- runtime routing flows (`inspect`, `select`, `match`, `compose`) resolve candidates from the manifest first instead of eagerly parsing the full atom registry
+- full atom JSON is hydrated only for the selected candidate set and its dependency closure
+- direct atom execution paths (`prepare`, `verify`, `activate`, `audit`) still load only the addressed atom plus dependency closure rather than scanning the whole registry
+- compose now fails with an explicit routing-index error when the generated manifest is missing instead of silently falling back to a full-registry preload
+
+### T8 - Capability level classification
+**Status: completed**
+Implement explicit Level 0/1/2 classification and lightest-sufficient selection policy.
+
+- Level 0: simple atom (no LOCS metadata)
+- Level 1: LOCS-Capsule profile
+- Level 2: full LOCS module
+
+Implemented behavior:
+
+- atoms now support explicit `locs_level` plus optional `locs_module_ref` for Level 2 routing
+- shipped capability-aware atoms are marked `locs_level: 1` instead of relying only on implicit inference
+- validators enforce Level 0/1/2 consistency, including `LEVEL2_REQUIRES_MODULE_REF` and `LEVEL2_REQUIRES_CAPABILITY_ID`
+- runtime inspection, selection, and audit outputs expose `capability_level`
+- capability selection now prefers the lightest sufficient eligible candidate before compatibility tie-breakers
+
+### T9 - External temporal hook integration
+**Status: completed**
+Integrate `skillcap history` and `skillcap evolve` with external TimeTrace service.
+
+Rules:
+
+- atoms keep only temporal hooks (`temporal_tracking`, `temporal_scope`)
+- no mutation/evolution/audit history persisted in atom JSON
+- temporal retrieval is targeted and demand-driven
+
+Implemented behavior:
+
+- `skillcap` now integrates with external `TimeTrace` through a narrow CLI adapter instead of linking against TimeTrace internals
+- integration resolves a built `tt` binary plus `.timetrace` workspace explicitly; missing workspace/binary now fails with actionable runtime errors instead of silent empty results
+- `skillcapsule.config.json` may declare temporal settings (`workspace_dir`, `project_dir`, `binary`, `binary_args`, `allow_cargo_run`) so the unfinished TimeTrace project can evolve independently
+- history/evolution queries remain demand-driven and capability-scoped; no temporal state is copied into atom JSON or normal compose/index context
+
+### T10 - Add `skillcap evolve <capability_id>`
+**Status: completed**
+Implement comparative historical analysis with promotion/demotion guidance.
+
+Outputs:
+
+- evidence-backed trend summary
+- capability-level recommendation (stay/promote/demote)
+- confidence gating based on verified evidence quality
+
+Implemented behavior:
+
+- `skillcap evolve` now queries `tt compare --format json` and returns structured trend stats
+- the runtime derives a conservative `promote` / `stay` / `demote` recommendation from approval rate, rollback presence, evidence quality, and TimeTrace confidence
+- output includes `confidence_gate`, reasoning lines, and declared temporal scopes from current capability atoms
+- recommendation logic stays in `skill_capsule`; TimeTrace remains the evidence source rather than the policy owner
+
+### T11 - Add `skillcap history <capability_id>`
+**Status: completed**
+Implement targeted temporal lookup through TimeTrace with truth-priority sorting:
+
+- verified > unverified
+- approved > unapproved
+- evidence-backed > inferred
+- stable > recent
+
+Recency alone must not rank as truth.
+
+Implemented behavior:
+
+- `skillcap history` now queries `tt history --capability-id --format json`
+- results preserve TimeTrace truth-priority ordering and are surfaced as structured event payloads
+- optional `--scope` is validated against declared `temporal_scope` values and reported as advisory because current TimeTrace CLI still returns capability-wide history
+- missing TimeTrace setup now fails explicitly instead of pretending no history exists
+
+### T12 - Token-efficiency discipline checks
+**Status: completed**
+Added `Indexer.checkTokenEfficiency(atoms)` running 5 checks: `OVERSIZED_CONTRACT_PAYLOAD` (contract JSON > 2 048 bytes), `TOO_MANY_EVIDENCE_ITEMS` (success_evidence > 10), `COMPATIBILITY_BLOAT` (compatible_atoms > 20), `TEMPORAL_SCOPE_WITHOUT_TRACKING`, `DUPLICATE_METADATA_FIELD`. Results written to `metrics/token_efficiency.json`. Violations surface in `indexSkillCapsule` error and warning arrays. Types `TokenEfficiencyViolation` and `TokenEfficiencyReport` added to `types.ts`.
+
+### T13 - Opt-in temporal write-back
+**Status: completed**
+Emit capability selection and audit receipts into external TimeTrace without making TimeTrace availability a hard runtime dependency for core routing.
+
+Implemented behavior:
+
+- `skillcapsule.config.json` now supports `temporal.record_selection_events` and `temporal.record_audit_receipts`
+- `selectCapability` records `tt record selection` when enabled and an atom is successfully selected
+- `auditAtom` records `tt record audit` when enabled and the atom resolves to a capability contract
+- TimeTrace write failures are returned as `temporal_warnings` on selection/audit results instead of breaking the primary command path
+- write-back continues to use the same resolved `tt` binary and `.timetrace` workspace boundary as `history` and `evolve`
+
+### T14 - Golden contract regression pack
+**Status: completed**
+Add release-grade golden checks for generated routing artifacts and CLI JSON contracts so drift is caught explicitly.
+
+Implemented behavior:
+
+- `test/golden-contracts.test.js` now validates exact generated CIF text from the shared indexer
+- routing manifest structure is checked through a compact golden summary fixture rather than a huge raw snapshot
+- CLI JSON contracts for `inspect`, `select`, and `doctor` are pinned through fixtures, with doctor output normalized for dynamic paths
+- these tests are strict enough to catch accidental routing/diagnostic drift while staying portable across temp workspaces
+
+### T15 - INDEX/report module extraction
+**Status: completed**
+Reduce `skillcap index` CLI complexity by extracting deterministic INDEX/governance report logic into a typed module.
+
+Implemented behavior:
+
+- `src/index-report.ts` now owns governance metric derivation, outcome loading, and `INDEX.md` rendering
+- `bin/skillcap.js` keeps `index` as orchestration only: compile registry, load runtime state, call report helpers, write artifacts
+- focused coverage in `test/index-report.test.js` validates INDEX rendering and governance metric computation directly
+- existing CLI/indexer tests continue to cover malformed-profile and contract-failure behavior end to end
 
 ---
 
-## Evolution capability tasks
+## Existing tasks retained
 
-These are ordered by the refined implementation sequence in `docs/evolution_refined.md`.
+The following remain valid and are not superseded:
 
-### Evo-1 - Outcome instrumentation for reliable evidence
-**Status: not started.**
-Extend outcome recording so the validator can rely on explicit evidence instead of inference. Ensure outcomes can consistently capture:
-
-- activation accepted / rejected
-- matched atoms
-- expected atoms when available
-- optional mutation decision metadata
-
-This is the prerequisite for trustworthy evolution metrics. Missing data should remain representable as `null`, not fabricated.
-
-### Evo-2 - Structured governance metrics in index output
-**Status: not started.**
-Compute per-atom metrics from compiled artifacts and outcomes during `skillcap index`. Write machine-readable results to `.skillcapsule/metrics/governance.json`, then render a human summary into `INDEX.md`.
-
-Initial metrics:
-
-- token efficiency
-- hook pass rate
-- activation accept rate
-
-Deferred metric:
-
-- retrieval precision, only when `expected_atoms` capture is reliable enough
-
-### Evo-3 - Guardrail-based ratchet in patch validator
-**Status: not started.**
-Extend `patch validate` to read structured governance metrics and apply:
-
-- hard invariants
-- per-metric regression guardrails
-- evidence sufficiency checks
-
-Validator result should return one of `auto_approvable`, `needs_human_approval`, or `rejected`. A summary score may be included for reporting, but must not be the sole approval gate.
-
-Depends on: Evo-2.
-
-### Evo-4 - Patch risk classes
-**Status: not started.**
-Classify supported patch operations by approval risk so the validator can apply stricter defaults to reach-broadening changes.
-
-Suggested default mapping:
-
-- Low risk: `add_example`, `deprecate_example`, `append_evidence`, `tighten_activation`, `remove_trigger_keyword`
-- Medium risk: `replace_render`, `add_trigger_keyword`
-- High risk: any future operation that broadens scope or edits policy/hook behavior
-
-Depends on: Evo-3.
-
-### Evo-5 - Evolution memory in outcome schema
-**Status: not started.**
-Add optional `mutation_record` field to outcome JSON. Schema remains backward-compatible. Record:
-
-- `patch_id`
-- `mutation`
-- `decision`
-- `decision_mode`
-- `scorecard_before`
-- `scorecard_after`
-- `evidence_run_ids`
-
-Independent of Evo-2 through Evo-4, but becomes more useful once they land.
-
-### Evo-6 - Wire meta.propose.composite to outcome history
-**Status: not started.**
-Implement the `hook.meta.analyze_patterns` script so it reads `.skillcapsule/outcomes/` and artifact history, then emits evidence-backed patch proposals to `.skillcapsule/patches/pending/`.
-
-The hook should propose changes conservatively:
-
-- frequent false positives -> consider `remove_trigger_keyword` or `tighten_activation`
-- frequent misses with strong evidence -> consider `add_trigger_keyword`
-- token-heavy renders with weak utility -> consider `replace_render`
-
-Depends on: Evo-2 and Evo-5.
-
-### Evo-7 - Retrieval precision as staged capability
-**Status: future work.**
-Once `expected_atoms` capture is trustworthy, add retrieval precision to governance guardrails and reporting. Do not block earlier evolution work on this metric.
-
-### Evo-8 - AST validation hook for atom source files
-**Status: future work.**
-A hook that parses atom JSON files for schema validity beyond what `patch validate` checks. Depends on finalizing the atom schema as a JSON Schema document. Listed in `docs/design.md` under remaining architecture work.
+- session variable threading in compose templates
+- compose-level visibility for `activation_mode: approval`
+- optional structured `tool_plan` emission
+- evolution roadmap items in `docs/evolution_refined.md`
+- hook DAG scheduler and container isolation follow-up
 
 ---
 
-## Remaining architecture tasks (from design.md)
+## Completion criteria
 
-These are pre-existing items, listed here for single-source tracking.
+Integration is complete when this statement is operationally true:
 
-| Task | Status |
-|---|---|
-| Hook DAG scheduler (dependencies across phases) | Not started |
-| Container-backed isolation for non-read-only hooks | Not started |
-| Auto-execute `before_action` hooks during `compose` | Not started |
-| Hot-path meta evolution | Explicitly out of scope |
+"The agent uses LOCS to understand stable capability contracts, then uses Skill Capsule atoms as interchangeable operational implementations."
 
----
+Acceptance signals:
 
-## Completed baseline
-
-The following capabilities are complete and not tracked as tasks:
-
-- Capsule and atom registry loading
-- Task classification, atom matching, dependency and conflict resolution
-- Hook planning, phase ordering, dependency-aware execution
-- Hook allowlisting, permission enforcement, timeout, and output summarization
-- S/O/X render selection under token budget
-- Compile, prepare, and verify artifact lifecycle with run ID and lineage
-- Artifact index queries: kind, run ID, parent artifact ID, atom, status, task type, latest/successful/failed
-- Retention pruning
-- Patch model: validate, apply, archive
-- Outcome recording
-- CIF.md and INDEX.md generation via `skillcap index`
-- MCP wrapper for all runtime operations
-- JSONL audit events and structured error envelopes
-- Startup validation and HTTP diagnostics
+- deterministic capability routing from CIF
+- compatibility-aware swappable atom selection
+- measurable evidence audits
+- governance policy enforcement failures are explicit and testable
+- temporal intelligence is externally queried, not inlined into capsules
+- no significant token bloat in default compose/index paths

@@ -6,6 +6,8 @@
     "file": "skills/domains/github.md",
     "section_id": "github-push-confirmation"
   },
+  "locs_level": 1,
+  "capability_id": "github.publish.execution",
   "triggers": {
     "keywords": ["push", "publish", "upload"],
     "blocked_by_intents": ["no_push", "dry_run"]
@@ -24,6 +26,20 @@
       "requires_user_approval": true
     }
   ],
+  "locs_capsule": {
+    "capability_id": "github.publish.execution",
+    "capability_name": "GitHub Publish Execution",
+    "capability_summary": "Perform the final Git push after safety checks and explicit human approval.",
+    "state_model": "external-boundary",
+    "side_effects": "implicit",
+    "determinism": "deterministic-if-environment-stable",
+    "risk_level": "high",
+    "approval_policy": "human-review-required",
+    "audit_level": "strict",
+    "swappable_atom_group": "github-publish-execution",
+    "compatibility": ["git", "github"],
+    "success_evidence": ["push_command_authorized", "push_command_succeeded"]
+  },
   "render": {
     "S": "Push to GitHub: Requires final confirmation.",
     "O": "Pushing to branch {{BRANCH}} on remote {{REMOTE}}. This action requires explicit user approval.",

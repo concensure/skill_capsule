@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "configPath": "<PROJECT_ROOT>/.skillcapsule/skillcapsule.config.json",
+  "projectRoot": "<PROJECT_ROOT>",
+  "checks": [
+    {
+      "name": "config.validation",
+      "status": "PASS",
+      "detail": "Configuration and hook registry validation passed."
+    },
+    {
+      "name": "filesystem.writable",
+      "status": "PASS",
+      "detail": "Writable: <PROJECT_ROOT>/.skillcapsule/compiled"
+    },
+    {
+      "name": "filesystem.writable",
+      "status": "PASS",
+      "detail": "Writable: <PROJECT_ROOT>/.skillcapsule/outcomes"
+    },
+    {
+      "name": "filesystem.writable",
+      "status": "PASS",
+      "detail": "Writable: <PROJECT_ROOT>/.skillcapsule/logs"
+    },
+    {
+      "name": "runtime.registry",
+      "status": "PASS",
+      "detail": "capsules=9 atoms=17 hooks=16"
+    },
+    {
+      "name": "runtime.hook_runner",
+      "status": "WARN",
+      "detail": "Hook runner enforcement is disabled; mode=process."
+    },
+    {
+      "name": "runtime.container_image_tag",
+      "status": "WARN",
+      "detail": "Container image uses a mutable tag: skillcapsule/hook-runner:latest"
+    }
+  ]
+}

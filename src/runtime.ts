@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import { ArtifactStore } from './artifact-store';
 import {
   ActivationResult,
   ArtifactLineage,
@@ -9,7 +10,16 @@ import {
   ArtifactQuery,
   ArtifactResumePlan,
   ArtifactSummary,
+  AuditCheck,
+  AtomAuditResult,
+  AtomRoutingSummary,
+  CapabilityEvolutionResult,
+  CapabilityHistoryResult,
+  CapabilityInspectionResult,
+  CapabilityLevel,
+  CapabilitySelectionResult,
   AtomDefinition,
+  CapsuleRoutingSummary,
   CapsuleDefinition,
   ComposeResult,
   GovernanceReport,
@@ -29,11 +39,37 @@ import {
   VerificationResult,
   RenderLevel,
   RiskLevel,
+  RoutingManifest,
   RuntimeErrorEnvelope,
   SkillCapsuleConfig,
   TaskClassification,
   TaskPayload,
+  TimeTraceEventRecord,
 } from './types';
+import { TemporalClient } from './temporal';
+import {
+  buildArtifactLineage,
+  computePrunedArtifactSets,
+  determineResumeAction,
+  filterArtifactRecords,
+  resolveFailureArtifactStatuses,
+  resolveSuccessfulArtifactStatuses,
+  summarizeArtifactRecords,
+} from './artifact-policy';
+import {
+  buildAuditTemporalSummary,
+  buildSelectionTemporalContext,
+  determineAuditTemporalOutcome,
+  evaluateCapabilityEvolution,
+  resolveAtomCapabilityId,
+  resolveCapabilityTemporalMetadata,
+} from './capability-policy';
+import {
+  classifyCapabilityLevel,
+  parseAtomDefinition,
+  parseCapsuleDefinition,
+  validateAtomAgainstAllRules,
+} from './validators';
 
 const RISK_ORDER: Record<RiskLevel, number> = {
   low: 0,
@@ -97,6 +133,12 @@ interface AtomSelection {
   mandatory: boolean;
 }
 
+interface RoutingAtomSelection {
+  atom: AtomRoutingSummary;
+  capsuleIds: string[];
+  mandatory: boolean;
+}
+
 interface HookExecutionSpec {
   file: string;
   args: string[];
@@ -156,6 +198,8 @@ export class SkillCapsuleRuntime {
   readonly compiledDir: string;
   readonly artifactIndexPath: string;
   readonly logsDir: string;
+  readonly routingManifestPath: string;
+  readonly artifactStore: ArtifactStore;
 
   constructor(configPath: string) {
     this.configPath = path.resolve(configPath);
@@ -170,14 +214,16 @@ export class SkillCapsuleRuntime {
     this.compiledDir = path.resolve(this.projectRoot, '.skillcapsule/compiled');
     this.artifactIndexPath = path.join(this.compiledDir, 'artifacts.index.json');
     this.logsDir = path.resolve(this.projectRoot, this.config.observability?.log_dir ?? '.skillcapsule/logs');
+    this.routingManifestPath = path.resolve(this.projectRoot, '.skillcapsule', 'routing.manifest.json');
+    this.artifactStore = new ArtifactStore(this.compiledDir, this.artifactIndexPath);
   }
 
   listAtoms(): AtomDefinition[] {
-    return this.readJsonDirectory<AtomDefinition>(this.atomsDir);
+    return this.readAtomDirectory(this.atomsDir);
   }
 
   listCapsules(): CapsuleDefinition[] {
-    return this.readJsonDirectory<CapsuleDefinition>(this.capsulesDir);
+    return this.readCapsuleDirectory(this.capsulesDir);
   }
 
   listHooks(): HookDefinition[] {
@@ -185,6 +231,433 @@ export class SkillCapsuleRuntime {
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf-8')) as HookRegistry;
     return registry.hooks;
   }
+
+  private readRoutingManifest(): RoutingManifest {
+    if (!fs.existsSync(this.routingManifestPath)) {
+      throw new SkillCapsuleRuntimeError(
+        'ROUTING_INDEX_MISSING',
+        'Routing manifest not found. Run "skillcap index" to generate .skillcapsule/routing.manifest.json.',
+        false,
+        { routingManifestPath: this.routingManifestPath },
+      );
+    }
+
+    try {
+      return JSON.parse(fs.readFileSync(this.routingManifestPath, 'utf-8')) as RoutingManifest;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new SkillCapsuleRuntimeError(
+        'ROUTING_INDEX_INVALID',
+        `Routing manifest is unreadable: ${message}`,
+        false,
+        { routingManifestPath: this.routingManifestPath },
+      );
+    }
+  }
+
+  private listRoutingAtoms(): AtomRoutingSummary[] {
+    return this.readRoutingManifest().atoms ?? [];
+  }
+
+  private listRoutingCapsules(): CapsuleRoutingSummary[] {
+    return this.readRoutingManifest().capsules ?? [];
+  }
+
+  inspectCapability(capabilityId: string): CapabilityInspectionResult {
+    const matching = this.getRoutingAtomsForCapability(capabilityId);
+    if (matching.length === 0) {
+      throw new SkillCapsuleRuntimeError(
+        'CAPABILITY_NOT_FOUND',
+        `No atoms found for capability_id: ${capabilityId}`,
+        false,
+        { capabilityId },
+      );
+    }
+
+    const atomMap = this.loadAtomClosureMap(matching.map((atom) => atom.id));
+    return {
+      capability_id: capabilityId,
+      atom_count: matching.length,
+      atoms: matching.map((summary) => {
+        const atom = atomMap.get(summary.id);
+        if (!atom) {
+          throw new SkillCapsuleRuntimeError('ATOM_NOT_FOUND', `Atom definition not found: ${summary.id}`, false, {
+            atomId: summary.id,
+          });
+        }
+        const validation = validateAtomAgainstAllRules(atom, atomMap);
+        return {
+          id: atom.id,
+          version: atom.version,
+          capability_level: classifyCapabilityLevel(atom),
+          risk_level: atom.locs_capsule?.risk_level ?? 'unknown',
+          approval_policy: atom.locs_capsule?.approval_policy ?? 'unknown',
+          audit_level: atom.locs_capsule?.audit_level ?? 'unknown',
+          compatibility: atom.locs_capsule?.compatibility ?? [],
+          swappable_group: atom.locs_capsule?.swappable_atom_group,
+          success_evidence: atom.locs_capsule?.success_evidence ?? [],
+          governance_valid: validation.valid,
+          contract_violations: validation.violations.map((violation) => violation.rule),
+          contract_warnings: validation.warnings.map((warning) => warning.rule),
+        };
+      }),
+    };
+  }
+
+  selectCapability(capabilityId: string, projectConstraints: string[] = []): CapabilitySelectionResult {
+    const candidates = this.getRoutingAtomsForCapability(capabilityId);
+    if (candidates.length === 0) {
+      throw new SkillCapsuleRuntimeError(
+        'CAPABILITY_NOT_FOUND',
+        `No atoms found for capability_id: ${capabilityId}`,
+        false,
+        { capabilityId },
+      );
+    }
+
+    const atomMap = this.loadAtomClosureMap(candidates.map((atom) => atom.id));
+    const fullCandidates = candidates
+      .map((candidate) => atomMap.get(candidate.id))
+      .filter((candidate): candidate is AtomDefinition => Boolean(candidate));
+    const preferredGroup = this.resolvePreferredSwappableGroup(fullCandidates);
+    const scored = candidates
+      .map((summary) => {
+        const atom = atomMap.get(summary.id);
+        if (!atom) {
+          throw new SkillCapsuleRuntimeError('ATOM_NOT_FOUND', `Atom definition not found: ${summary.id}`, false, {
+            atomId: summary.id,
+          });
+        }
+        return this.evaluateCapabilityCandidate(atom, atomMap, projectConstraints, preferredGroup);
+      })
+      .sort((left, right) => {
+        if (left.eligible !== right.eligible) {
+          return left.eligible ? -1 : 1;
+        }
+        if (left.capabilityLevel !== right.capabilityLevel) {
+          return left.capabilityLevel - right.capabilityLevel;
+        }
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        if (right.matched !== left.matched) {
+          return right.matched - left.matched;
+        }
+        return left.atom.id.localeCompare(right.atom.id);
+      });
+
+    const selected = scored.find((candidate) => candidate.eligible);
+    const temporalWarnings = this.recordSelectionTemporalEvent(
+      capabilityId,
+      selected?.atom,
+      projectConstraints,
+      selected?.score,
+    );
+    return {
+      capability_id: capabilityId,
+      selected_atom: selected?.atom.id,
+      selected_version: selected?.atom.version,
+      compatibility_score: selected?.score ?? 0,
+      compatibility_matched: selected?.matched ?? 0,
+      compatibility_constraints: projectConstraints,
+      temporal_warnings: temporalWarnings,
+      all_candidates: scored.map((candidate) => {
+        const isSelected = selected?.atom.id === candidate.atom.id;
+        const rejectionReasons = isSelected
+          ? []
+          : candidate.rejectionReasons.length > 0
+            ? candidate.rejectionReasons
+            : ['not_selected:higher_ranked_candidate'];
+
+        return {
+          atom_id: candidate.atom.id,
+          version: candidate.atom.version,
+          capability_level: candidate.capabilityLevel,
+          governance_valid: candidate.governanceValid,
+          eligible: candidate.eligible,
+          selected: isSelected,
+          compatibility_score: candidate.score,
+          matched: candidate.matched,
+          missing: candidate.missing,
+          rejection_reasons: rejectionReasons,
+        };
+      }),
+    };
+  }
+
+  auditAtom(atomId: string): AtomAuditResult {
+    const atomMap = this.loadAtomClosureMap([atomId]);
+    const atom = atomMap.get(atomId);
+    if (!atom) {
+      throw new SkillCapsuleRuntimeError('ATOM_NOT_FOUND', `Atom not found: ${atomId}`, false, { atomId });
+    }
+
+    const validation = validateAtomAgainstAllRules(atom, atomMap);
+    const latestPrepare = this.getLatestArtifact({ kind: 'prepare', atomId });
+    const latestVerify = this.getLatestArtifact({ kind: 'verify', atomId });
+    const latestSuccessfulPrepare = this.getLatestSuccessfulArtifact({ kind: 'prepare', atomId });
+    const latestSuccessfulVerify = this.getLatestSuccessfulArtifact({ kind: 'verify', atomId });
+    const latestSuccessArtifact = latestSuccessfulVerify ?? latestSuccessfulPrepare ?? null;
+    const satisfiedEvidence = this.inferSatisfiedEvidence(atom, latestPrepare, latestVerify);
+    const requiredEvidence = atom.locs_capsule?.success_evidence ?? [];
+    const missingEvidence = requiredEvidence.filter((item) => !satisfiedEvidence.includes(item));
+    const checks = this.buildAuditChecks(
+      atom,
+      validation,
+      latestPrepare,
+      latestVerify,
+      requiredEvidence,
+      satisfiedEvidence,
+      missingEvidence,
+    );
+    const temporalWarnings = this.recordAuditTemporalReceipt(atom, validation.valid, checks);
+
+    return {
+      atom_id: atomId,
+      capability_level: classifyCapabilityLevel(atom),
+      valid: validation.valid,
+      violations: validation.violations,
+      warnings: validation.warnings,
+      locs_capsule: atom.locs_capsule ?? null,
+      checks,
+      temporal_warnings: temporalWarnings,
+      evidence_summary: {
+        latest_prepare_status: latestPrepare?.status,
+        latest_verify_status: latestVerify?.status,
+        latest_success_artifact_id: latestSuccessArtifact?.id,
+        success_evidence: requiredEvidence,
+        satisfied_evidence: satisfiedEvidence,
+        missing_evidence: missingEvidence,
+      },
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Temporal intelligence methods  (T10, T11)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Retrieve truth-priority ordered temporal history for a capability.
+   *
+   * Requires TimeTrace (`tt`) to be installed in PATH and a `.timetrace`
+   * workspace initialised in the project root.  Degrades gracefully when
+   * unavailable: returns an empty event list with `temporal_available: false`.
+   *
+   * Pass `scope` to filter events by temporal_scope category (e.g.
+   * "audit-results", "selection-history", "regression-events").
+   */
+  historyCapability(capabilityId: string, requestedScope?: string): CapabilityHistoryResult {
+    const capabilityAtoms = this.getRoutingAtomsForCapability(capabilityId);
+    if (capabilityAtoms.length === 0) {
+      throw new SkillCapsuleRuntimeError(
+        'CAPABILITY_NOT_FOUND',
+        `No atoms found for capability_id: ${capabilityId}`,
+        false,
+        { capabilityId },
+      );
+    }
+
+    const temporalMetadata = resolveCapabilityTemporalMetadata(capabilityAtoms);
+    const client = this.buildTemporalClient();
+    try {
+      const history = client.getCapabilityHistory(capabilityId);
+      const warnings = [...history.warnings];
+      if (requestedScope && !temporalMetadata.scopes.includes(requestedScope)) {
+        warnings.push(`Requested scope "${requestedScope}" is not declared by any atom for this capability.`);
+      } else if (requestedScope) {
+        warnings.push(
+          `Requested scope "${requestedScope}" is advisory only; current TimeTrace CLI returns capability-wide history.`,
+        );
+      }
+      if (!temporalMetadata.tracked) {
+        warnings.push('Capability does not declare temporal_tracking in any current atom profile.');
+      }
+
+      return {
+        capability_id: capabilityId,
+        provider: 'timetrace',
+        workspace_path: history.workspacePath,
+        temporal_tracking_declared: temporalMetadata.tracked,
+        temporal_scopes: temporalMetadata.scopes,
+        event_count: history.events.length,
+        events: history.events,
+        warnings,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new SkillCapsuleRuntimeError(
+        'TIMETRACE_HISTORY_UNAVAILABLE',
+        message,
+        false,
+        { capabilityId, requestedScope },
+      );
+    }
+  }
+
+  /**
+   * Analyse capability trend history and produce a promotion/demotion
+   * recommendation.
+   *
+   * Uses TimeTrace comparison stats through the external CLI contract.
+   * Missing TimeTrace setup is treated as an operational error.
+   */
+  evolveCapability(capabilityId: string): CapabilityEvolutionResult {
+    const capabilityAtoms = this.getRoutingAtomsForCapability(capabilityId);
+    if (capabilityAtoms.length === 0) {
+      throw new SkillCapsuleRuntimeError(
+        'CAPABILITY_NOT_FOUND',
+        `No atoms found for capability_id: ${capabilityId}`,
+        false,
+        { capabilityId },
+      );
+    }
+
+    const temporalMetadata = resolveCapabilityTemporalMetadata(capabilityAtoms);
+    const client = this.buildTemporalClient();
+    try {
+      const comparison = client.getCapabilityComparison(capabilityId);
+      const evaluation = evaluateCapabilityEvolution(comparison.stats);
+      const warnings = [...comparison.warnings];
+      if (!temporalMetadata.tracked) {
+        warnings.push('Capability does not declare temporal_tracking in any current atom profile.');
+      }
+
+      return {
+        capability_id: capabilityId,
+        provider: 'timetrace',
+        workspace_path: comparison.workspacePath,
+        temporal_tracking_declared: temporalMetadata.tracked,
+        temporal_scopes: temporalMetadata.scopes,
+        stats: comparison.stats,
+        recommendation: evaluation.recommendation,
+        confidence_gate: evaluation.confidenceGate,
+        reasoning: evaluation.reasoning,
+        warnings,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new SkillCapsuleRuntimeError(
+        'TIMETRACE_EVOLUTION_UNAVAILABLE',
+        message,
+        false,
+        { capabilityId },
+      );
+    }
+
+    /* legacy temporal heuristic
+    if (available) {
+      const stats = client.getCapabilityComparison(capabilityId);
+      if (stats) {
+        const reasons: string[] = [];
+        let recommendation: CapabilityEvolutionResult['recommendation'];
+
+        if (stats.has_recent_rollback) {
+          reasons.push(`Recent rollback detected — require explicit re-approval before promotion.`);
+        }
+
+        if (stats.confidence === 'stable' && stats.approval_rate >= 0.8 && !stats.has_recent_rollback) {
+          recommendation = 'promote';
+          reasons.push(
+            `Approval rate ${(stats.approval_rate * 100).toFixed(0)}% over ${stats.audit_count} audit(s).`,
+          );
+          reasons.push(`Evidence quality: ${stats.evidence_quality}. Confidence: ${stats.confidence}.`);
+        } else if (stats.confidence === 'unstable' || stats.approval_rate < 0.4 || stats.has_recent_rollback) {
+          recommendation = 'demote';
+          reasons.push(
+            `Approval rate ${(stats.approval_rate * 100).toFixed(0)}% is below the 40% threshold.`,
+          );
+          if (stats.rollback_count > 0) {
+            reasons.push(`${stats.rollback_count} rollback(s) recorded.`);
+          }
+        } else {
+          recommendation = 'stay';
+          reasons.push(`Approval rate ${(stats.approval_rate * 100).toFixed(0)}% — watch for improvement.`);
+        }
+
+        return {
+          capability_id: capabilityId,
+          temporal_available: true,
+          recommendation,
+          confidence: stats.confidence,
+          evidence_quality: stats.evidence_quality,
+          approval_rate: stats.approval_rate,
+          audit_count: stats.audit_count,
+          has_recent_rollback: stats.has_recent_rollback,
+          reasons,
+        };
+      }
+    }
+
+    // --- Fallback: derive recommendation from local governance metrics ---
+    const governanceReport = this.readGovernanceReport();
+    const matchingAtoms = this.getRoutingAtomsForCapability(capabilityId);
+
+    if (matchingAtoms.length === 0) {
+      throw new SkillCapsuleRuntimeError(
+        'CAPABILITY_NOT_FOUND',
+        `No atoms found for capability_id: ${capabilityId}`,
+        false,
+        { capabilityId },
+      );
+    }
+
+    const reasons: string[] = [
+      'TimeTrace not available — using local governance metrics only.',
+      'For richer temporal analysis, install `tt` and run `tt init`.',
+    ];
+
+    let avgTokenEfficiency: number | null = null;
+    let avgHookPassRate: number | null = null;
+
+    if (governanceReport) {
+      const atomMetrics = matchingAtoms
+        .map((atom) => governanceReport.atoms.find((m) => m.atom_id === atom.id))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m));
+
+      const teValues = atomMetrics.map((m) => m.token_efficiency).filter((v): v is number => v !== null);
+      if (teValues.length > 0) {
+        avgTokenEfficiency = teValues.reduce((a, b) => a + b, 0) / teValues.length;
+      }
+
+      const hpValues = atomMetrics.map((m) => m.hook_pass_rate).filter((v): v is number => v !== null);
+      if (hpValues.length > 0) {
+        avgHookPassRate = hpValues.reduce((a, b) => a + b, 0) / hpValues.length;
+      }
+    }
+
+    // Simple heuristic without audit history
+    const recommendation: CapabilityEvolutionResult['recommendation'] =
+      avgHookPassRate !== null && avgHookPassRate >= 0.9 ? 'promote'
+      : avgHookPassRate !== null && avgHookPassRate < 0.5 ? 'demote'
+      : 'stay';
+
+    if (avgTokenEfficiency !== null) {
+      reasons.push(`Local avg token efficiency: ${(avgTokenEfficiency * 100).toFixed(0)}%.`);
+    }
+    if (avgHookPassRate !== null) {
+      reasons.push(`Local avg hook pass rate: ${(avgHookPassRate * 100).toFixed(0)}%.`);
+    }
+
+    return {
+      capability_id: capabilityId,
+      temporal_available: false,
+      recommendation,
+      confidence: 'watch',
+      evidence_quality: 'low',
+      approval_rate: 0,
+      audit_count: 0,
+      has_recent_rollback: false,
+      reasons,
+      local_governance: {
+        atom_count: matchingAtoms.length,
+        average_token_efficiency: avgTokenEfficiency,
+        average_hook_pass_rate: avgHookPassRate,
+      },
+    };
+    */
+  }
+
+  // ---------------------------------------------------------------------------
 
   listArtifacts(query: ArtifactQuery = {}): ArtifactRecord[] {
     return this.filterArtifacts(query).slice(0, query.limit ?? 20);
@@ -195,7 +668,7 @@ export class SkillCapsuleRuntime {
   }
 
   getLatestSuccessfulArtifact(query: ArtifactQuery = {}): ArtifactRecord | null {
-    const successStatuses = this.resolveSuccessfulStatuses(query.kind);
+    const successStatuses = resolveSuccessfulArtifactStatuses(query.kind);
     const statusFiltered = query.status
       ? successStatuses.includes(query.status)
         ? [query.status]
@@ -212,27 +685,7 @@ export class SkillCapsuleRuntime {
 
   summarizeArtifacts(query: Omit<ArtifactQuery, 'limit'> = {}): ArtifactSummary {
     const records = this.filterArtifacts({ ...query, limit: undefined });
-    const runIds = new Set(records.map((record) => record.runId).filter((value): value is string => Boolean(value)));
-    const summary: ArtifactSummary = {
-      total: records.length,
-      runIds: runIds.size,
-      byKind: {},
-      byStatus: {},
-      byTaskType: {},
-      latestCreatedAt: records[0]?.createdAt,
-    };
-
-    for (const record of records) {
-      summary.byKind[record.kind] = (summary.byKind[record.kind] ?? 0) + 1;
-      if (record.status) {
-        summary.byStatus[record.status] = (summary.byStatus[record.status] ?? 0) + 1;
-      }
-      if (record.taskType) {
-        summary.byTaskType[record.taskType] = (summary.byTaskType[record.taskType] ?? 0) + 1;
-      }
-    }
-
-    return summary;
+    return summarizeArtifactRecords(records);
   }
 
   getArtifactLineage(runId: string): ArtifactLineage {
@@ -240,17 +693,7 @@ export class SkillCapsuleRuntime {
     if (artifacts.length === 0) {
       throw new SkillCapsuleRuntimeError('ARTIFACT_LINEAGE_NOT_FOUND', `Artifact lineage not found for run: ${runId}`, false, { runId });
     }
-    const roots: string[] = [];
-    const childrenByParent: Record<string, string[]> = {};
-    for (const artifact of [...artifacts].reverse()) {
-      if (!artifact.parentArtifactId) {
-        roots.push(artifact.id);
-        continue;
-      }
-      childrenByParent[artifact.parentArtifactId] = childrenByParent[artifact.parentArtifactId] ?? [];
-      childrenByParent[artifact.parentArtifactId].push(artifact.id);
-    }
-    return { runId, artifacts, roots, childrenByParent };
+    return buildArtifactLineage(runId, artifacts);
   }
 
   resumeFromArtifact(idOrPath: string): ArtifactResumePlan {
@@ -262,7 +705,7 @@ export class SkillCapsuleRuntime {
       return {
         sourceArtifactId: artifact.id,
         runId: artifact.runId,
-        recommendedAction: 'prepare',
+        recommendedAction: determineResumeAction(artifact),
         task,
       };
     }
@@ -271,7 +714,7 @@ export class SkillCapsuleRuntime {
       return {
         sourceArtifactId: artifact.id,
         runId: artifact.runId,
-        recommendedAction: artifact.status === 'BLOCKED' ? 'prepare' : 'verify',
+        recommendedAction: determineResumeAction(artifact),
         atomId: artifact.atomId,
         task,
       };
@@ -280,14 +723,14 @@ export class SkillCapsuleRuntime {
     return {
       sourceArtifactId: artifact.id,
       runId: artifact.runId,
-      recommendedAction: 'verify',
+      recommendedAction: determineResumeAction(artifact),
       atomId: artifact.atomId,
       task,
     };
   }
 
   getLatestFailedArtifact(query: ArtifactQuery = {}): ArtifactRecord | null {
-    const failureStatuses = this.resolveFailureStatuses(query.kind);
+    const failureStatuses = resolveFailureArtifactStatuses(query.kind);
     const filtered = this.filterArtifacts({ ...query, limit: undefined }).filter((record) =>
       failureStatuses.includes(record.status ?? ''),
     );
@@ -298,18 +741,18 @@ export class SkillCapsuleRuntime {
     const records = this.readArtifactIndex();
     const record = records.find((item) => item.id === idOrPath || item.path === path.resolve(idOrPath));
     const resolvedPath = record?.path ?? path.resolve(idOrPath);
-    if (!fs.existsSync(resolvedPath)) {
+    if (!this.artifactStore.exists(resolvedPath)) {
       throw new SkillCapsuleRuntimeError('ARTIFACT_NOT_FOUND', `Artifact not found: ${idOrPath}`, false, { idOrPath });
     }
-    return JSON.parse(fs.readFileSync(resolvedPath, 'utf-8')) as Record<string, unknown>;
+    return this.artifactStore.readPayload(resolvedPath);
   }
 
   pruneArtifacts(): ArtifactPruneResult {
     const records = this.readArtifactIndex();
     const { kept, removed } = this.computePrunedArtifactSets(records);
     for (const record of removed) {
-      if (fs.existsSync(record.path)) {
-        fs.unlinkSync(record.path);
+      if (this.artifactStore.exists(record.path)) {
+        this.artifactStore.remove(record.path);
       }
     }
     this.writeArtifactIndex(kept);
@@ -808,6 +1251,52 @@ export class SkillCapsuleRuntime {
       .map((file) => JSON.parse(fs.readFileSync(path.join(directory, file), 'utf-8')) as T);
   }
 
+  private readAtomDirectory(directory: string): AtomDefinition[] {
+    if (!fs.existsSync(directory)) {
+      return [];
+    }
+
+    return fs
+      .readdirSync(directory)
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => {
+        const raw = JSON.parse(fs.readFileSync(path.join(directory, file), 'utf-8')) as unknown;
+        const parsed = parseAtomDefinition(raw, file);
+        if (!parsed.atom) {
+          throw new SkillCapsuleRuntimeError(
+            'ATOM_SCHEMA_INVALID',
+            `Atom schema invalid: ${file}`,
+            false,
+            { file, violations: parsed.violations },
+          );
+        }
+        return parsed.atom;
+      });
+  }
+
+  private readCapsuleDirectory(directory: string): CapsuleDefinition[] {
+    if (!fs.existsSync(directory)) {
+      return [];
+    }
+
+    return fs
+      .readdirSync(directory)
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => {
+        const raw = JSON.parse(fs.readFileSync(path.join(directory, file), 'utf-8')) as unknown;
+        const parsed = parseCapsuleDefinition(raw, file);
+        if (!parsed.capsule) {
+          throw new SkillCapsuleRuntimeError(
+            'CAPSULE_SCHEMA_INVALID',
+            `Capsule schema invalid: ${file}`,
+            false,
+            { file, violations: parsed.violations },
+          );
+        }
+        return parsed.capsule;
+      });
+  }
+
   private readPatch(patchPath: string): PatchProposal {
     return JSON.parse(fs.readFileSync(path.resolve(patchPath), 'utf-8')) as PatchProposal;
   }
@@ -817,11 +1306,303 @@ export class SkillCapsuleRuntime {
   }
 
   private getAtom(atomId: string): AtomDefinition {
-    const atom = this.listAtoms().find((item) => item.id === atomId);
-    if (!atom) {
+    return this.loadAtomDefinition(atomId);
+  }
+
+  private getRoutingAtomsForCapability(capabilityId: string): AtomRoutingSummary[] {
+    return this.listRoutingAtoms()
+      .filter((atom) => atom.capability_id === capabilityId || atom.locs_capsule?.capability_id === capabilityId)
+      .sort((left, right) => left.id.localeCompare(right.id));
+  }
+
+  private loadAtomDefinition(atomId: string): AtomDefinition {
+    const routingSummary = fs.existsSync(this.routingManifestPath)
+      ? this.listRoutingAtoms().find((atom) => atom.id === atomId)
+      : undefined;
+    const candidatePath = path.join(this.atomsDir, routingSummary?.file ?? `${atomId}.json`);
+    if (!fs.existsSync(candidatePath)) {
       throw new SkillCapsuleRuntimeError('ATOM_NOT_FOUND', `Atom definition not found: ${atomId}`, false, { atomId });
     }
-    return atom;
+    const raw = JSON.parse(fs.readFileSync(candidatePath, 'utf-8')) as unknown;
+    const parsed = parseAtomDefinition(raw, path.basename(candidatePath));
+    if (!parsed.atom) {
+      throw new SkillCapsuleRuntimeError(
+        'ATOM_SCHEMA_INVALID',
+        `Atom schema invalid: ${path.basename(candidatePath)}`,
+        false,
+        { file: candidatePath, violations: parsed.violations },
+      );
+    }
+    return parsed.atom;
+  }
+
+  // T7: progressive reveal — cap on atoms loaded in a single context window.
+  // A higher count suggests a full-registry preload that violates load-order discipline.
+  private static readonly MAX_ATOMS_PER_CONTEXT = 20;
+
+  private loadAtomClosureMap(atomIds: string[]): Map<string, AtomDefinition> {
+    const loaded = new Map<string, AtomDefinition>();
+    const queue = [...new Set(atomIds)];
+
+    while (queue.length > 0) {
+      const atomId = queue.shift();
+      if (!atomId || loaded.has(atomId)) {
+        continue;
+      }
+      const atom = this.loadAtomDefinition(atomId);
+      loaded.set(atom.id, atom);
+      for (const dependency of atom.dependencies ?? []) {
+        if (!loaded.has(dependency)) {
+          queue.push(dependency);
+        }
+      }
+    }
+
+    // T7 guardrail: warn when the closure grows beyond the progressive-reveal budget.
+    // This indicates full-registry or full-history preload in a default flow, which
+    // inflates token cost and breaks the CIF → contract → atom load order.
+    if (loaded.size > SkillCapsuleRuntime.MAX_ATOMS_PER_CONTEXT) {
+      process.stderr.write(
+        `[skill-capsule] WARN progressive-reveal: loaded ${loaded.size} atoms in a single ` +
+        `context (limit: ${SkillCapsuleRuntime.MAX_ATOMS_PER_CONTEXT}). ` +
+        `Scope your query via capability_id or a narrower capsule to reduce token cost.\n`,
+      );
+    }
+
+    return loaded;
+  }
+
+  private buildAuditChecks(
+    atom: AtomDefinition,
+    validation: ReturnType<typeof validateAtomAgainstAllRules>,
+    latestPrepare: ArtifactRecord | null,
+    latestVerify: ArtifactRecord | null,
+    requiredEvidence: string[],
+    satisfiedEvidence: string[],
+    missingEvidence: string[],
+  ): AuditCheck[] {
+    const checks: AuditCheck[] = [];
+
+    checks.push({
+      name: 'contract_compliance',
+      status: validation.valid ? 'PASS' : 'FAIL',
+      detail: validation.valid
+        ? 'Capability contract validation passed.'
+        : `Contract violations: ${validation.violations.map((violation) => violation.rule).join(', ')}`,
+    });
+
+    const unresolvedDependencies = (atom.dependencies ?? []).filter((dependency) =>
+      validation.violations.some(
+        (violation) => violation.rule === 'UNRESOLVED_DEPENDENCY' && violation.message.includes(dependency),
+      ),
+    );
+    checks.push({
+      name: 'dependency_integrity',
+      status: unresolvedDependencies.length === 0 ? 'PASS' : 'FAIL',
+      detail:
+        unresolvedDependencies.length === 0
+          ? 'All declared dependencies resolved.'
+          : `Unresolved dependencies: ${unresolvedDependencies.join(', ')}`,
+    });
+
+    let evidenceStatus: AuditCheck['status'] = 'PASS';
+    let evidenceDetail = 'All declared success evidence satisfied.';
+    if (requiredEvidence.length === 0) {
+      evidenceStatus = 'WARN';
+      evidenceDetail = 'No success_evidence declared for this atom.';
+    } else if (!latestPrepare && !latestVerify) {
+      evidenceStatus = 'WARN';
+      evidenceDetail = `No recent prepare/verify artifacts found. Unable to verify evidence: ${requiredEvidence.join(', ')}`;
+    } else if (missingEvidence.length > 0) {
+      evidenceStatus = 'FAIL';
+      evidenceDetail = `Missing success evidence: ${missingEvidence.join(', ')}. Satisfied: ${satisfiedEvidence.join(', ') || 'none'}`;
+    }
+    checks.push({
+      name: 'execution_evidence',
+      status: evidenceStatus,
+      detail: evidenceDetail,
+    });
+
+    const requiresApproval =
+      atom.activation_mode === 'approval' ||
+      Boolean(atom.hooks?.some((hook) => hook.requires_user_approval)) ||
+      atom.locs_capsule?.approval_policy === 'approval-required' ||
+      atom.locs_capsule?.approval_policy === 'human-review-required';
+    let approvalStatus: AuditCheck['status'] = 'PASS';
+    let approvalDetail = 'No explicit approval requirement declared.';
+    if (requiresApproval) {
+      approvalStatus = 'WARN';
+      approvalDetail =
+        'Approval-sensitive atom detected, but explicit approval receipts are not yet modeled in compiled artifacts.';
+    }
+    checks.push({
+      name: 'approval_compliance',
+      status: approvalStatus,
+      detail: approvalDetail,
+    });
+
+    const scopeCheck = this.findLatestHookResult(latestVerify, 'hook.diff.scope_check');
+    const unexpectedFileChangesStatus: AuditCheck['status'] =
+      scopeCheck?.status === 'PASS' ? 'PASS' : scopeCheck?.status === 'FAIL' ? 'FAIL' : 'WARN';
+    checks.push({
+      name: 'unexpected_file_changes',
+      status: unexpectedFileChangesStatus,
+      detail:
+        scopeCheck?.status === 'PASS'
+          ? 'Scope guard verified expected file changes.'
+          : scopeCheck?.status === 'FAIL'
+            ? `Scope guard reported unexpected file changes: ${scopeCheck.summary}`
+            : 'No scope guard evidence available for this atom.',
+    });
+
+    const latestStatus = latestVerify?.status ?? latestPrepare?.status;
+    let exitStatus: AuditCheck['status'] = 'WARN';
+    let exitDetail = 'No recent prepare/verify artifact found.';
+    if (latestVerify) {
+      exitStatus = latestVerify.status === 'PASS' ? 'PASS' : 'FAIL';
+      exitDetail = `Latest verify artifact status: ${latestVerify.status}`;
+    } else if (latestPrepare) {
+      exitStatus = latestPrepare.status === 'READY' ? 'PASS' : latestPrepare.status === 'BLOCKED' ? 'FAIL' : 'WARN';
+      exitDetail = `Latest prepare artifact status: ${latestStatus}`;
+    }
+    checks.push({
+      name: 'exit_status',
+      status: exitStatus,
+      detail: exitDetail,
+    });
+
+    return checks;
+  }
+
+  private inferSatisfiedEvidence(
+    atom: AtomDefinition,
+    latestPrepare: ArtifactRecord | null,
+    latestVerify: ArtifactRecord | null,
+  ): string[] {
+    const satisfied = new Set<string>();
+    const preparePayload = latestPrepare ? this.safeReadArtifactPayload(latestPrepare.path) : null;
+    const verifyPayload = latestVerify ? this.safeReadArtifactPayload(latestVerify.path) : null;
+
+    if (preparePayload?.hookResults?.before_render?.some((result: { id?: string; status?: string }) => result.id === 'hook.git.status' && result.status === 'PASS')) {
+      satisfied.add('git_status_collected');
+    }
+    if (preparePayload?.hookResults?.before_action?.some((result: { id?: string; status?: string }) => result.id === 'hook.secrets.scan' && result.status === 'PASS')) {
+      satisfied.add('secret_scan_passed');
+    }
+    if (verifyPayload?.hookResults?.after_action?.some((result: { id?: string; status?: string }) => result.id === 'hook.verify.typecheck' && result.status === 'PASS')) {
+      satisfied.add('typecheck_passed');
+    }
+    if (verifyPayload?.hookResults?.after_action?.some((result: { id?: string; status?: string }) => result.id === 'hook.diff.scope_check' && result.status === 'PASS')) {
+      satisfied.add('diff_scope_check_passed');
+    }
+    if (verifyPayload?.hookResults?.after_action?.some((result: { id?: string; status?: string }) => result.id === 'hook.test.related' && result.status === 'PASS')) {
+      satisfied.add('related_tests_passed');
+    }
+    if (atom.id === 'github.commit.message') {
+      satisfied.add('commit_message_drafted');
+    }
+    if (verifyPayload?.hookResults?.after_action?.some((result: { id?: string; status?: string }) => result.id === 'hook.github.push' && result.status === 'PASS')) {
+      satisfied.add('push_command_authorized');
+      satisfied.add('push_command_succeeded');
+    }
+
+    return Array.from(satisfied).sort();
+  }
+
+  private findLatestHookResult(artifact: ArtifactRecord | null, hookId: string): HookResult | null {
+    if (!artifact) {
+      return null;
+    }
+    const payload = this.safeReadArtifactPayload(artifact.path);
+    if (!payload?.hookResults || typeof payload.hookResults !== 'object') {
+      return null;
+    }
+
+    for (const results of Object.values(payload.hookResults as Record<string, HookResult[]>)) {
+      const match = Array.isArray(results) ? results.find((result) => result.id === hookId) : null;
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }
+
+  private safeReadArtifactPayload(filePath: string): Record<string, any> | null {
+    try {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Record<string, any>;
+    } catch {
+      return null;
+    }
+  }
+
+  private resolvePreferredSwappableGroup(candidates: AtomDefinition[]): string | undefined {
+    const groups = candidates
+      .map((candidate) => candidate.locs_capsule?.swappable_atom_group)
+      .filter((group): group is string => Boolean(group));
+    if (groups.length === 0) {
+      return undefined;
+    }
+
+    const counts = new Map<string, number>();
+    for (const group of groups) {
+      counts.set(group, (counts.get(group) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries()).sort((left, right) => {
+      if (right[1] !== left[1]) {
+        return right[1] - left[1];
+      }
+      return left[0].localeCompare(right[0]);
+    })[0]?.[0];
+  }
+
+  private evaluateCapabilityCandidate(
+    atom: AtomDefinition,
+    atomMap: Map<string, AtomDefinition>,
+    projectConstraints: string[],
+    preferredGroup?: string,
+  ): {
+    atom: AtomDefinition;
+    capabilityLevel: CapabilityLevel;
+    governanceValid: boolean;
+    eligible: boolean;
+    score: number;
+    matched: number;
+    missing: string[];
+    rejectionReasons: string[];
+  } {
+    const compatibility = atom.locs_capsule?.compatibility ?? [];
+    const missing = compatibility.filter((constraint) => !projectConstraints.includes(constraint));
+    const matched = projectConstraints.filter((constraint) => compatibility.includes(constraint)).length;
+    const score = matched / Math.max(compatibility.length, 1);
+    const validation = validateAtomAgainstAllRules(atom, atomMap);
+    const rejectionReasons: string[] = [];
+
+    if (!validation.valid) {
+      for (const violation of validation.violations) {
+        rejectionReasons.push(`governance:${violation.rule}`);
+      }
+    }
+
+    const swappableGroup = atom.locs_capsule?.swappable_atom_group;
+    if (preferredGroup && swappableGroup && swappableGroup !== preferredGroup) {
+      rejectionReasons.push(`swappable_group_mismatch:${swappableGroup}`);
+    }
+
+    if (projectConstraints.length > 0 && missing.length > 0) {
+      rejectionReasons.push(`missing_compatibility:${missing.join(',')}`);
+    }
+
+    return {
+      atom,
+      capabilityLevel: classifyCapabilityLevel(atom),
+      governanceValid: validation.valid,
+      eligible: rejectionReasons.length === 0,
+      score,
+      matched,
+      missing,
+      rejectionReasons,
+    };
   }
 
   private applyPatchOp(atom: AtomDefinition, op: PatchProposalOp): void {
@@ -873,13 +1654,15 @@ export class SkillCapsuleRuntime {
   }
 
   private selectAtomsForTask(task: TaskPayload, classification: TaskClassification) {
-    const atoms = this.listAtoms();
-    const capsules = this.listCapsules();
+    const atoms = this.listRoutingAtoms();
+    const capsules = this.listRoutingCapsules();
     const matchedAtoms = atoms.filter((atom) => this.atomMatches(atom, classification));
     const matchedIds = new Set(matchedAtoms.map((atom) => atom.id));
 
-    const selectedCapsules = capsules.filter((capsule) => capsule.atoms.some((atomId) => matchedIds.has(atomId)));
-    const selectionMap = new Map<string, AtomSelection>();
+    const selectedCapsules = capsules.filter(
+      (capsule) => capsule.type !== 'stage' && capsule.atoms.some((atomId) => matchedIds.has(atomId)),
+    );
+    const selectionMap = new Map<string, RoutingAtomSelection>();
 
     for (const capsule of selectedCapsules) {
       for (const atomId of capsule.atoms) {
@@ -907,11 +1690,28 @@ export class SkillCapsuleRuntime {
       }
     }
 
-    const selections = this.resolveDependencies(Array.from(selectionMap.values()), atoms, classification);
+    const resolvedIds = this.resolveSelectionAtomIds(Array.from(selectionMap.values()), atoms, classification);
+    const fullAtomMap = this.loadAtomClosureMap(resolvedIds);
+    const selections = resolvedIds
+      .map((atomId) => {
+        const fullAtom = fullAtomMap.get(atomId);
+        if (!fullAtom) {
+          throw new SkillCapsuleRuntimeError('ATOM_NOT_FOUND', `Atom definition not found: ${atomId}`, false, {
+            atomId,
+          });
+        }
+        const meta = selectionMap.get(atomId);
+        return {
+          atom: fullAtom,
+          capsuleIds: meta?.capsuleIds ?? [],
+          mandatory: meta?.mandatory ?? true,
+        };
+      })
+      .sort((left, right) => left.atom.id.localeCompare(right.atom.id));
     return { selections, selectedCapsules };
   }
 
-  private atomMatches(atom: AtomDefinition, classification: TaskClassification): boolean {
+  private atomMatches(atom: Pick<AtomDefinition, 'id' | 'triggers' | 'activation'>, classification: TaskClassification): boolean {
     if (!this.atomAllowedByIntent(atom, classification)) {
       return false;
     }
@@ -931,17 +1731,21 @@ export class SkillCapsuleRuntime {
     return riskSatisfied && (keywordMatch || taskTypeMatch || Boolean(autoActivate && taskTypeMatch));
   }
 
-  private atomAllowedByIntent(atom: AtomDefinition, classification: TaskClassification): boolean {
+  private atomAllowedByIntent(
+    atom: Pick<AtomDefinition, 'triggers'>,
+    classification: TaskClassification,
+  ): boolean {
     const blockedBy = atom.triggers.blocked_by_intents ?? [];
     return !blockedBy.some((intent) => classification.intents.includes(intent));
   }
 
-  private resolveDependencies(
-    selections: AtomSelection[],
-    atoms: AtomDefinition[],
+  private resolveSelectionAtomIds(
+    selections: Array<{ atom: Pick<AtomRoutingSummary, 'id' | 'dependencies' | 'conflicts' | 'triggers'> }>,
+    atoms: Array<Pick<AtomRoutingSummary, 'id' | 'dependencies' | 'conflicts' | 'triggers'>>,
     classification: TaskClassification,
-  ): AtomSelection[] {
+  ): string[] {
     const selectionMap = new Map(selections.map((selection) => [selection.atom.id, selection]));
+    const atomMap = new Map(atoms.map((atom) => [atom.id, atom]));
     const queue = [...selections];
 
     while (queue.length > 0) {
@@ -954,14 +1758,12 @@ export class SkillCapsuleRuntime {
         if (selectionMap.has(dependencyId)) {
           continue;
         }
-        const dependency = atoms.find((atom) => atom.id === dependencyId);
+        const dependency = atomMap.get(dependencyId);
         if (!dependency || !this.atomAllowedByIntent(dependency, classification)) {
           continue;
         }
-        const selection: AtomSelection = {
+        const selection = {
           atom: dependency,
-          capsuleIds: [],
-          mandatory: true,
         };
         selectionMap.set(dependency.id, selection);
         queue.push(selection);
@@ -975,7 +1777,10 @@ export class SkillCapsuleRuntime {
       }
     }
 
-    return Array.from(selectionMap.values()).filter((selection) => !conflicts.has(selection.atom.id));
+    return Array.from(selectionMap.values())
+      .map((selection) => selection.atom.id)
+      .filter((atomId) => !conflicts.has(atomId))
+      .sort((left, right) => left.localeCompare(right));
   }
 
   private planHooks(atoms: AtomDefinition[]): Record<HookPhase, PlannedHook[]> {
@@ -1602,14 +2407,17 @@ export class SkillCapsuleRuntime {
     return template.replace(/\{\{([A-Z_]+)\}\}/g, (_match, key: string) => values[key] ?? '');
   }
 
-  private resolveBudget(requestedBudget: number | undefined, capsules: CapsuleDefinition[]): number {
+  private resolveBudget(
+    requestedBudget: number | undefined,
+    capsules: Array<Pick<CapsuleDefinition, 'default_budget'>>,
+  ): number {
     const capsuleBudget = capsules.reduce((maxBudget, capsule) => Math.max(maxBudget, capsule.default_budget ?? 0), 0);
     const fallbackBudget = requestedBudget ?? capsuleBudget ?? this.config.context_budget.default;
     return Math.min(fallbackBudget, this.config.context_budget.max);
   }
 
   private writeCompiledArtifact(result: ComposeResult, runId: string, parentArtifactId?: string): string {
-    fs.mkdirSync(this.compiledDir, { recursive: true });
+    this.artifactStore.ensureCompiledDir();
     const artifactId = this.buildArtifactId('compose');
     const outputPath = path.join(this.compiledDir, `${Date.now()}-compose.json`);
     this.writeArtifactWithIndex(
@@ -1646,7 +2454,7 @@ export class SkillCapsuleRuntime {
     runId: string,
     parentArtifactId?: string,
   ): string {
-    fs.mkdirSync(this.compiledDir, { recursive: true });
+    this.artifactStore.ensureCompiledDir();
     const artifactId = this.buildArtifactId('prepare');
     const outputPath = path.join(
       this.compiledDir,
@@ -1689,7 +2497,7 @@ export class SkillCapsuleRuntime {
     runId: string,
     parentArtifactId?: string,
   ): string {
-    fs.mkdirSync(this.compiledDir, { recursive: true });
+    this.artifactStore.ensureCompiledDir();
     const artifactId = this.buildArtifactId('verify');
     const outputPath = path.join(
       this.compiledDir,
@@ -1725,10 +2533,7 @@ export class SkillCapsuleRuntime {
   }
 
   private readArtifactIndex(): ArtifactRecord[] {
-    if (!fs.existsSync(this.artifactIndexPath)) {
-      return [];
-    }
-    return JSON.parse(fs.readFileSync(this.artifactIndexPath, 'utf-8')) as ArtifactRecord[];
+    return this.artifactStore.readIndex();
   }
 
   private writeArtifactWithIndex(
@@ -1736,114 +2541,43 @@ export class SkillCapsuleRuntime {
     artifactPayload: Record<string, unknown>,
     record: ArtifactRecord,
   ): void {
-    this.writeJsonAtomic(artifactPath, artifactPayload);
+    this.artifactStore.writePayload(artifactPath, artifactPayload);
     try {
       this.appendArtifactIndex(record);
     } catch (error) {
-      if (fs.existsSync(artifactPath)) {
-        fs.unlinkSync(artifactPath);
+      if (this.artifactStore.exists(artifactPath)) {
+        this.artifactStore.remove(artifactPath);
       }
       throw error;
     }
   }
 
   private appendArtifactIndex(record: ArtifactRecord): void {
-    fs.mkdirSync(this.compiledDir, { recursive: true });
+    this.artifactStore.ensureCompiledDir();
     const records = this.readArtifactIndex().filter((item) => item.id !== record.id);
     records.push(record);
     const { kept, removed } = this.computePrunedArtifactSets(records);
     for (const removedRecord of removed) {
-      if (fs.existsSync(removedRecord.path)) {
-        fs.unlinkSync(removedRecord.path);
+      if (this.artifactStore.exists(removedRecord.path)) {
+        this.artifactStore.remove(removedRecord.path);
       }
     }
     this.writeArtifactIndex(kept);
   }
 
   private writeArtifactIndex(records: ArtifactRecord[]): void {
-    fs.mkdirSync(this.compiledDir, { recursive: true });
-    this.writeTextAtomic(this.artifactIndexPath, `${JSON.stringify(records, null, 2)}\n`);
+    this.artifactStore.writeIndex(records);
   }
 
   private computePrunedArtifactSets(records: ArtifactRecord[]): {
     kept: ArtifactRecord[];
     removed: ArtifactRecord[];
   } {
-    const sorted = [...records].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-    const retention = this.config.artifact_retention;
-    if (!retention?.enabled) {
-      return { kept: sorted, removed: [] };
-    }
-
-    const maxTotal = retention.max_total ?? Number.POSITIVE_INFINITY;
-    const maxPerKind = retention.max_per_kind ?? {};
-    const perKindCount: Partial<Record<ArtifactRecord['kind'], number>> = {};
-    const kept: ArtifactRecord[] = [];
-    const removed: ArtifactRecord[] = [];
-
-    for (const record of sorted) {
-      const kindCount = perKindCount[record.kind] ?? 0;
-      const kindLimit = maxPerKind[record.kind] ?? Number.POSITIVE_INFINITY;
-      if (kindCount >= kindLimit || kept.length >= maxTotal) {
-        removed.push(record);
-        continue;
-      }
-      kept.push(record);
-      perKindCount[record.kind] = kindCount + 1;
-    }
-
-    return { kept, removed };
+    return computePrunedArtifactSets(records, this.config.artifact_retention);
   }
 
   private filterArtifacts(query: ArtifactQuery): ArtifactRecord[] {
-    const records = this.readArtifactIndex();
-    return records
-      .filter((record) => {
-        if (query.kind && record.kind !== query.kind) {
-          return false;
-        }
-        if (query.runId && record.runId !== query.runId) {
-          return false;
-        }
-        if (query.parentArtifactId && record.parentArtifactId !== query.parentArtifactId) {
-          return false;
-        }
-        if (query.atomId && record.atomId !== query.atomId) {
-          return false;
-        }
-        if (query.status && record.status !== query.status) {
-          return false;
-        }
-        if (query.taskType && record.taskType !== query.taskType) {
-          return false;
-        }
-        return true;
-      })
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }
-
-  private resolveSuccessfulStatuses(kind?: ArtifactRecord['kind']): string[] {
-    const successByKind: Record<ArtifactRecord['kind'], string> = {
-      compose: 'ok',
-      prepare: 'READY',
-      verify: 'PASS',
-    };
-    if (kind) {
-      return [successByKind[kind]];
-    }
-    return Object.values(successByKind);
-  }
-
-  private resolveFailureStatuses(kind?: ArtifactRecord['kind']): string[] {
-    const failuresByKind: Record<ArtifactRecord['kind'], string[]> = {
-      compose: [],
-      prepare: ['BLOCKED'],
-      verify: ['FAIL'],
-    };
-    if (kind) {
-      return failuresByKind[kind];
-    }
-    return [...new Set(Object.values(failuresByKind).flat())];
+    return filterArtifactRecords(this.readArtifactIndex(), query);
   }
 
   private getArtifactRecord(idOrPath: string): ArtifactRecord {
@@ -1954,18 +2688,15 @@ export class SkillCapsuleRuntime {
   }
 
   private writeJsonAtomic(filePath: string, payload: unknown): void {
-    this.writeTextAtomic(filePath, `${JSON.stringify(payload, null, 2)}\n`);
+    this.artifactStore.writePayload(filePath, payload);
   }
 
   private writeTextAtomic(filePath: string, contents: string): void {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    fs.writeFileSync(tempPath, contents);
-    fs.renameSync(tempPath, filePath);
+    this.artifactStore.writeText(filePath, contents);
   }
 
   private buildArtifactId(kind: ArtifactRecord['kind']): string {
-    return `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return this.artifactStore.buildArtifactId(kind);
   }
 
   private validateHookCommand(command: string, definition: HookDefinition): void {
@@ -2025,6 +2756,61 @@ export class SkillCapsuleRuntime {
 
   private buildRunId(): string {
     return `run-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private buildTemporalClient(): TemporalClient {
+    return new TemporalClient(this.projectRoot, this.config);
+  }
+
+  private recordSelectionTemporalEvent(
+    capabilityId: string,
+    selectedAtom: AtomDefinition | undefined,
+    projectConstraints: string[],
+    score?: number,
+  ): string[] {
+    if (!this.config.temporal?.record_selection_events) {
+      return [];
+    }
+    if (!selectedAtom) {
+      return ['TimeTrace selection recording skipped because no eligible atom was selected.'];
+    }
+
+    const context = buildSelectionTemporalContext(selectedAtom, projectConstraints);
+    try {
+      const client = this.buildTemporalClient();
+      const result = client.recordSelectionEvent(capabilityId, context, score);
+      return result.warnings;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return [`TimeTrace selection recording failed: ${message}`];
+    }
+  }
+
+  private recordAuditTemporalReceipt(
+    atom: AtomDefinition,
+    valid: boolean,
+    checks: AuditCheck[],
+  ): string[] {
+    if (!this.config.temporal?.record_audit_receipts) {
+      return [];
+    }
+
+    const capabilityId = resolveAtomCapabilityId(atom);
+    if (!capabilityId) {
+      return ['TimeTrace audit recording skipped because the atom has no capability_id.'];
+    }
+
+    const outcome = determineAuditTemporalOutcome(valid, checks);
+    const summary = buildAuditTemporalSummary(atom, outcome, checks);
+
+    try {
+      const client = this.buildTemporalClient();
+      const result = client.recordAuditReceipt(capabilityId, outcome, summary);
+      return result.warnings;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return [`TimeTrace audit recording failed: ${message}`];
+    }
   }
 
   private hookPlanToIds(plan: Record<HookPhase, PlannedHook[]>): Record<HookPhase, string[]> {

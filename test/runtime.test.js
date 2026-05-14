@@ -823,6 +823,47 @@ test('doctor collects passing deployment diagnostics for a healthy project', () 
   assert.ok(result.checks.some((check) => check.name === 'runtime.container_image_tag' && check.status === 'WARN'));
 });
 
+test('bootstrap validation warns when temporal recording is configured but disabled', () => {
+  const { tempRoot, configPath } = makeTempProject();
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  config.temporal = {
+    enabled: false,
+    provider: 'timetrace',
+    record_selection_events: true,
+  };
+  writeConfig(tempRoot, config);
+
+  const bootstrapModule = loadFreshModule(path.join(repoRoot, 'dist', 'bootstrap.js'));
+  const result = bootstrapModule.validateRuntimeEnvironment(configPath);
+
+  assert.equal(result.ok, true);
+  assert.ok(result.warnings.some((warning) => warning.includes('temporal recording is configured but temporal.enabled is false')));
+});
+
+test('doctor reports temporal integration as warn when TimeTrace is configured but not ready', () => {
+  const { tempRoot, configPath } = makeTempProject();
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  config.temporal = {
+    provider: 'timetrace',
+    workspace_dir: '.timetrace',
+    record_selection_events: true,
+  };
+  writeConfig(tempRoot, config);
+
+  const bootstrapModule = loadFreshModule(path.join(repoRoot, 'dist', 'bootstrap.js'));
+  const result = bootstrapModule.collectRuntimeDiagnostics(configPath);
+
+  assert.equal(result.ok, true);
+  assert.ok(
+    result.checks.some(
+      (check) =>
+        check.name === 'runtime.temporal' &&
+        check.status === 'WARN' &&
+        /configured but not ready/i.test(check.detail),
+    ),
+  );
+});
+
 test('doctor returns a failing diagnostic result instead of throwing on invalid config', () => {
   const { tempRoot, configPath } = makeTempProject();
   const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));

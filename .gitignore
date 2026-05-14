@@ -17,3 +17,11 @@ Thumbs.db
 
 # Test artifacts
 *.log
+
+# Skill Capsule Runtime
+.skillcapsule/compiled/
+.skillcapsule/logs/
+.skillcapsule/outcomes/
+.skillcapsule/patches/pending/
+.skillcapsule/patches/accepted/
+.skillcapsule/patches/rejected/

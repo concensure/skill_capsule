@@ -1,0 +1,683 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-05-14T01:28:34.401Z",
+  "atoms": [
+    {
+      "id": "bug.pattern.extractor",
+      "file": "bug.pattern.extractor.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "bug fixed",
+          "postmortem",
+          "learn from error",
+          "race condition",
+          "useEffect"
+        ],
+        "task_types": [
+          "bug_analysis",
+          "learning"
+        ],
+        "blocked_by_intents": [
+          "no_learning"
+        ]
+      },
+      "activation": {
+        "risk_min": "low",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate"
+    },
+    {
+      "id": "capsule.architect.manage",
+      "file": "capsule.architect.manage.json",
+      "version": "1.0.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "architect",
+          "create capsule",
+          "new atom",
+          "index",
+          "registry",
+          "doctor"
+        ],
+        "task_types": [
+          "meta_analysis",
+          "system_optimization"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium"
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate"
+    },
+    {
+      "id": "code.edit.safe",
+      "file": "code.edit.safe.json",
+      "version": "1.0.0",
+      "capability_level": 1,
+      "capability_id": "code.edit.safety",
+      "triggers": {
+        "keywords": [
+          "edit",
+          "fix",
+          "update"
+        ],
+        "task_types": [
+          "coding"
+        ]
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate",
+      "locs_capsule": {
+        "capability_id": "code.edit.safety",
+        "capability_name": "Scoped Code Edit Safety",
+        "capability_summary": "Verify that code edits stay within allowed scope and satisfy the type system.",
+        "state_model": "external-boundary",
+        "side_effects": "explicit",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "medium",
+        "approval_policy": "approval-required",
+        "audit_level": "standard",
+        "swappable_atom_group": "code-edit-safety",
+        "compatibility": [
+          "git",
+          "typescript"
+        ],
+        "success_evidence": [
+          "diff_scope_check_passed",
+          "typecheck_passed"
+        ]
+      }
+    },
+    {
+      "id": "code.edit.scope_guard",
+      "file": "code.edit.scope_guard.json",
+      "version": "0.1.0",
+      "capability_level": 1,
+      "capability_id": "code.edit.scope_guard",
+      "triggers": {
+        "keywords": [
+          "edit",
+          "change",
+          "modify",
+          "update",
+          "fix"
+        ],
+        "task_types": [
+          "coding",
+          "bugfix",
+          "feature"
+        ],
+        "blocked_by_intents": [
+          "no_file_write"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect",
+      "locs_capsule": {
+        "capability_id": "code.edit.scope_guard",
+        "capability_name": "Code Edit Scope Guard",
+        "capability_summary": "Ensure that edits remain within the explicitly authorized file scope.",
+        "state_model": "external-boundary",
+        "side_effects": "explicit",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "medium",
+        "approval_policy": "approval-required",
+        "audit_level": "standard",
+        "swappable_atom_group": "code-edit-scope-guard",
+        "compatibility": [
+          "git"
+        ],
+        "success_evidence": [
+          "diff_scope_check_passed"
+        ]
+      }
+    },
+    {
+      "id": "code.guard.local",
+      "file": "code.guard.local.json",
+      "version": "1.0.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "guard",
+          "safe",
+          "check",
+          "verify",
+          "pre-commit"
+        ],
+        "task_types": [
+          "coding",
+          "bugfix",
+          "feature"
+        ]
+      },
+      "activation": {
+        "risk_min": "low"
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate"
+    },
+    {
+      "id": "code.refactor.boundary_check",
+      "file": "code.refactor.boundary_check.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "refactor",
+          "restructure",
+          "move",
+          "rename",
+          "clean up"
+        ],
+        "task_types": [
+          "refactor"
+        ]
+      },
+      "activation": {
+        "risk_min": "high",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "code.review.diff_risk",
+      "file": "code.review.diff_risk.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "patch",
+          "diff",
+          "review",
+          "risk"
+        ],
+        "task_types": [
+          "coding",
+          "refactor"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "code.test.related_tests",
+      "file": "code.test.related_tests.json",
+      "version": "0.1.0",
+      "capability_level": 1,
+      "capability_id": "code.verify.related_tests",
+      "triggers": {
+        "keywords": [
+          "test",
+          "verify",
+          "check",
+          "fix",
+          "regression"
+        ],
+        "task_types": [
+          "coding",
+          "bugfix"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate",
+      "locs_capsule": {
+        "capability_id": "code.verify.related_tests",
+        "capability_name": "Related Test Verification",
+        "capability_summary": "Run tests that are relevant to the changed files to detect regressions.",
+        "state_model": "external-boundary",
+        "side_effects": "read-only",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "medium",
+        "approval_policy": "auto-if-readonly",
+        "audit_level": "standard",
+        "swappable_atom_group": "code-verify-related-tests",
+        "compatibility": [
+          "node",
+          "test-runner"
+        ],
+        "success_evidence": [
+          "related_tests_passed"
+        ]
+      }
+    },
+    {
+      "id": "code.verify.typecheck",
+      "file": "code.verify.typecheck.json",
+      "version": "0.1.0",
+      "capability_level": 1,
+      "capability_id": "code.verify.typecheck",
+      "triggers": {
+        "keywords": [
+          "typescript",
+          "rust",
+          "go",
+          "java",
+          "type",
+          "compilation"
+        ],
+        "task_types": [
+          "coding",
+          "bugfix"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect",
+      "locs_capsule": {
+        "capability_id": "code.verify.typecheck",
+        "capability_name": "Type System Verification",
+        "capability_summary": "Validate that code changes satisfy the project's type or compilation checks.",
+        "state_model": "external-boundary",
+        "side_effects": "read-only",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "medium",
+        "approval_policy": "auto-if-readonly",
+        "audit_level": "standard",
+        "swappable_atom_group": "code-verify-typecheck",
+        "compatibility": [
+          "typescript"
+        ],
+        "success_evidence": [
+          "typecheck_passed"
+        ]
+      }
+    },
+    {
+      "id": "fix.strategy.generator",
+      "file": "fix.strategy.generator.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "generate fix",
+          "correction strategy",
+          "healing code"
+        ],
+        "task_types": [
+          "fix_generation",
+          "learning"
+        ],
+        "blocked_by_intents": [
+          "no_auto_fix"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate"
+    },
+    {
+      "id": "github.commit.message",
+      "file": "github.commit.message.json",
+      "version": "0.1.0",
+      "capability_level": 1,
+      "capability_id": "github.commit.message",
+      "triggers": {
+        "keywords": [
+          "commit",
+          "message",
+          "github",
+          "push",
+          "upload"
+        ],
+        "task_types": [
+          "publish"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate",
+      "locs_capsule": {
+        "capability_id": "github.commit.message",
+        "capability_name": "Commit Message Composition",
+        "capability_summary": "Prepare a concise and accurate Git commit message for publish flows.",
+        "state_model": "stateless",
+        "side_effects": "none",
+        "determinism": "deterministic",
+        "risk_level": "low",
+        "approval_policy": "auto",
+        "audit_level": "minimal",
+        "swappable_atom_group": "github-commit-message",
+        "compatibility": [
+          "git"
+        ],
+        "success_evidence": [
+          "commit_message_drafted"
+        ]
+      }
+    },
+    {
+      "id": "github.push.confirmation",
+      "file": "github.push.confirmation.json",
+      "version": "0.1.0",
+      "capability_level": 1,
+      "capability_id": "github.publish.execution",
+      "triggers": {
+        "keywords": [
+          "push",
+          "publish",
+          "upload"
+        ],
+        "blocked_by_intents": [
+          "no_push",
+          "dry_run"
+        ]
+      },
+      "activation": {
+        "risk_min": "high",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "approval",
+      "locs_capsule": {
+        "capability_id": "github.publish.execution",
+        "capability_name": "GitHub Publish Execution",
+        "capability_summary": "Perform the final Git push after safety checks and explicit human approval.",
+        "state_model": "external-boundary",
+        "side_effects": "implicit",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "high",
+        "approval_policy": "human-review-required",
+        "audit_level": "strict",
+        "swappable_atom_group": "github-publish-execution",
+        "compatibility": [
+          "git",
+          "github"
+        ],
+        "success_evidence": [
+          "push_command_authorized",
+          "push_command_succeeded"
+        ]
+      }
+    },
+    {
+      "id": "github.upload.safety",
+      "file": "github.upload.safety.json",
+      "version": "1.0.0",
+      "capability_level": 1,
+      "capability_id": "github.publish.preflight",
+      "triggers": {
+        "keywords": [
+          "github",
+          "push",
+          "upload"
+        ],
+        "task_types": [
+          "publish"
+        ],
+        "blocked_by_intents": [
+          "no_safety_checks"
+        ]
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect",
+      "locs_capsule": {
+        "capability_id": "github.publish.preflight",
+        "capability_name": "GitHub Publish Preflight",
+        "capability_summary": "Verify repository safety signals before a GitHub publish or push operation.",
+        "state_model": "external-boundary",
+        "side_effects": "read-only",
+        "determinism": "deterministic-if-environment-stable",
+        "risk_level": "medium",
+        "approval_policy": "auto-if-readonly",
+        "audit_level": "standard",
+        "swappable_atom_group": "github-publish-preflight",
+        "compatibility": [
+          "git",
+          "github"
+        ],
+        "success_evidence": [
+          "git_status_collected",
+          "secret_scan_passed"
+        ]
+      }
+    },
+    {
+      "id": "learning.atom.creator",
+      "file": "learning.atom.creator.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "create atom",
+          "self-healing",
+          "generate capsule"
+        ],
+        "task_types": [
+          "atom_creation",
+          "learning"
+        ],
+        "blocked_by_intents": [
+          "no_registry_modification"
+        ]
+      },
+      "activation": {
+        "risk_min": "high",
+        "auto_activate": false
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "meta.monitor.usage",
+      "file": "meta.monitor.usage.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "skill",
+          "hook",
+          "usage",
+          "pattern",
+          "evolve",
+          "optimize"
+        ],
+        "task_types": [
+          "meta_analysis",
+          "system_optimization"
+        ],
+        "auto_activate": true
+      },
+      "activation": {
+        "risk_min": "low",
+        "auto_activate": true
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "activate"
+    },
+    {
+      "id": "meta.propose.composite",
+      "file": "meta.propose.composite.json",
+      "version": "0.1.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "propose hook",
+          "new capsule",
+          "composite skill"
+        ],
+        "task_types": [
+          "meta_analysis"
+        ],
+        "blocked_by_intents": [
+          "no_meta_evolution"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium",
+        "auto_activate": false
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect"
+    },
+    {
+      "id": "meta.registry.validator",
+      "file": "meta.registry.validator.json",
+      "version": "1.0.0",
+      "capability_level": 0,
+      "triggers": {
+        "keywords": [
+          "validate",
+          "doctor",
+          "index",
+          "verify-registry"
+        ],
+        "task_types": [
+          "meta_analysis",
+          "system_optimization"
+        ]
+      },
+      "activation": {
+        "risk_min": "medium"
+      },
+      "dependencies": [],
+      "conflicts": [],
+      "activation_mode": "inspect"
+    }
+  ],
+  "capsules": [
+    {
+      "id": "code.local.guard",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "code.guard.local"
+      ]
+    },
+    {
+      "id": "code.safe.edit",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "code.edit.scope_guard",
+        "code.refactor.boundary_check",
+        "code.review.diff_risk",
+        "code.test.related_tests",
+        "code.verify.typecheck"
+      ],
+      "default_budget": 800,
+      "status": "active"
+    },
+    {
+      "id": "github.upload.safe",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "github.commit.message",
+        "github.push.confirmation",
+        "github.upload.safety"
+      ],
+      "default_budget": 600,
+      "status": "active"
+    },
+    {
+      "id": "meta.capsule.architect",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "capsule.architect.manage"
+      ]
+    },
+    {
+      "id": "meta.evolution",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "meta.monitor.usage",
+        "meta.propose.composite"
+      ],
+      "default_budget": 400,
+      "status": "active"
+    },
+    {
+      "id": "meta.postmortem.learning",
+      "version": "0.1.0",
+      "type": "capsule",
+      "atoms": [
+        "bug.pattern.extractor",
+        "fix.strategy.generator",
+        "learning.atom.creator",
+        "meta.registry.validator"
+      ],
+      "default_budget": 600,
+      "status": "experimental"
+    },
+    {
+      "id": "stage.dev.velocity",
+      "version": "1.0.0",
+      "type": "stage",
+      "atoms": [
+        "code.edit.safe",
+        "code.guard.local",
+        "learning.atom.creator",
+        "meta.monitor.usage"
+      ]
+    },
+    {
+      "id": "stage.prod.hardened",
+      "version": "1.0.0",
+      "type": "stage",
+      "atoms": [
+        "code.edit.scope_guard",
+        "code.review.diff_risk",
+        "github.push.confirmation",
+        "github.upload.safety"
+      ]
+    },
+    {
+      "id": "stage.qa.integrity",
+      "version": "1.0.0",
+      "type": "stage",
+      "atoms": [
+        "code.refactor.boundary_check",
+        "code.test.related_tests",
+        "code.verify.typecheck",
+        "github.commit.message"
+      ]
+    }
+  ]
+}

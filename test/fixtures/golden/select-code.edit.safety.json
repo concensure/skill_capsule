@@ -1,0 +1,26 @@
+{
+  "capability_id": "code.edit.safety",
+  "selected_atom": "code.edit.safe",
+  "selected_version": "1.0.0",
+  "compatibility_score": 1,
+  "compatibility_matched": 2,
+  "compatibility_constraints": [
+    "git",
+    "typescript"
+  ],
+  "temporal_warnings": [],
+  "all_candidates": [
+    {
+      "atom_id": "code.edit.safe",
+      "version": "1.0.0",
+      "capability_level": 1,
+      "governance_valid": true,
+      "eligible": true,
+      "selected": true,
+      "compatibility_score": 1,
+      "matched": 2,
+      "missing": [],
+      "rejection_reasons": []
+    }
+  ]
+}

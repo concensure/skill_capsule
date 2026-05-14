@@ -1,0 +1,21 @@
+{
+  "id": "stage.prod.hardened",
+  "name": "Stage: PROD (Hardened)",
+  "version": "1.0.0",
+  "description": "Environment for production safety. Strict enforcement of scope, security scanning, and manual push confirmation.",
+  "composition": [
+    "code.edit.scope_guard",
+    "code.review.diff_risk",
+    "github.upload.safety",
+    "github.push.confirmation"
+  ],
+  "governance": {
+    "risk_tolerance": "low",
+    "enforcement_level": "blocking",
+    "smartlearn_mode": "enforce_best_practices"
+  },
+  "triggers": {
+    "environment": "production",
+    "keywords": ["release", "hotfix", "deploy", "main", "master"]
+  }
+}

@@ -6,6 +6,8 @@
     "file": "skills/domains/github.md",
     "section_id": "github-commit-message"
   },
+  "locs_level": 1,
+  "capability_id": "github.commit.message",
   "triggers": {
     "keywords": ["commit", "message", "github", "push", "upload"],
     "task_types": ["publish"]
@@ -18,6 +20,20 @@
     "S": "Commit Message: Use a clear, scoped summary of the change.",
     "O": "Commit Message: Write a concise subject line that states the intent of the upload, then include a brief body if context is needed.",
     "X": "Commit Message: Before publishing, prepare a commit message that accurately summarizes the diff, calls out user-visible changes, and avoids overstating verification or scope."
+  },
+  "locs_capsule": {
+    "capability_id": "github.commit.message",
+    "capability_name": "Commit Message Composition",
+    "capability_summary": "Prepare a concise and accurate Git commit message for publish flows.",
+    "state_model": "stateless",
+    "side_effects": "none",
+    "determinism": "deterministic",
+    "risk_level": "low",
+    "approval_policy": "auto",
+    "audit_level": "minimal",
+    "swappable_atom_group": "github-commit-message",
+    "compatibility": ["git"],
+    "success_evidence": ["commit_message_drafted"]
   },
   "token_estimate": {
     "S": 10,

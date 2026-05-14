@@ -1,0 +1,26 @@
+{
+  "capability_id": "github.publish.preflight",
+  "atom_count": 1,
+  "atoms": [
+    {
+      "id": "github.upload.safety",
+      "version": "1.0.0",
+      "capability_level": 1,
+      "risk_level": "medium",
+      "approval_policy": "auto-if-readonly",
+      "audit_level": "standard",
+      "compatibility": [
+        "git",
+        "github"
+      ],
+      "swappable_group": "github-publish-preflight",
+      "success_evidence": [
+        "git_status_collected",
+        "secret_scan_passed"
+      ],
+      "governance_valid": true,
+      "contract_violations": [],
+      "contract_warnings": []
+    }
+  ]
+}

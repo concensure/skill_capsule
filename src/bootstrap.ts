@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import SkillCapsuleRuntime, { SkillCapsuleRuntimeError } from './runtime';
+import { TemporalClient } from './temporal';
 import { DiagnosticCheck, DoctorResult, HookRegistry, SkillCapsuleConfig } from './types';
 
 export interface RuntimeValidationResult {
@@ -133,6 +134,9 @@ export function validateRuntimeEnvironment(configPath: string): RuntimeValidatio
     warnings.push(`sandbox_mode is '${config.security.sandbox_mode}', expected 'container' for deployment.`);
   }
 
+  const temporalWarnings = collectTemporalConfigWarnings(projectRoot, config);
+  warnings.push(...temporalWarnings);
+
   return {
     ok: true,
     configPath: resolvedConfigPath,
@@ -218,6 +222,10 @@ export function collectRuntimeDiagnostics(configPath: string): DoctorResult {
       });
     }
 
+    for (const temporalCheck of collectTemporalDiagnostics(runtime)) {
+      checks.push(temporalCheck);
+    }
+
     return {
       ok: checks.every((check) => check.status !== 'FAIL'),
       configPath: validation.configPath,
@@ -237,6 +245,82 @@ export function collectRuntimeDiagnostics(configPath: string): DoctorResult {
       checks,
     };
   }
+}
+
+function collectTemporalConfigWarnings(projectRoot: string, config: SkillCapsuleConfig): string[] {
+  const warnings: string[] = [];
+  const temporal = config.temporal;
+  if (!temporal) {
+    return warnings;
+  }
+
+  if ((temporal.record_selection_events || temporal.record_audit_receipts) && temporal.enabled === false) {
+    warnings.push('temporal recording is configured but temporal.enabled is false; TimeTrace write-back will stay disabled.');
+  }
+
+  if (temporal.provider && temporal.provider !== 'timetrace') {
+    warnings.push(`temporal.provider is '${temporal.provider}', but only 'timetrace' is currently supported.`);
+  }
+
+  const hasWriteBack = temporal.record_selection_events || temporal.record_audit_receipts;
+  if (!hasWriteBack && temporal.enabled === false) {
+    return warnings;
+  }
+
+  if (temporal.binary) {
+    const resolvedBinary = path.resolve(projectRoot, temporal.binary);
+    if (!fs.existsSync(resolvedBinary)) {
+      warnings.push(`configured TimeTrace binary is missing: ${resolvedBinary}`);
+    }
+  }
+
+  return warnings;
+}
+
+function collectTemporalDiagnostics(runtime: SkillCapsuleRuntime): DiagnosticCheck[] {
+  const temporal = runtime.config.temporal;
+  if (!temporal) {
+    return [];
+  }
+
+  const checks: DiagnosticCheck[] = [];
+  const writeBackEnabled = Boolean(temporal.record_selection_events || temporal.record_audit_receipts);
+  const integrationEnabled = temporal.enabled !== false;
+
+  if (!integrationEnabled && !writeBackEnabled) {
+    checks.push({
+      name: 'runtime.temporal',
+      status: 'WARN',
+      detail: 'TimeTrace integration is explicitly disabled.',
+    });
+    return checks;
+  }
+
+  try {
+    const client = new TemporalClient(runtime.projectRoot, runtime.config);
+    const resolution = client.resolve();
+    checks.push({
+      name: 'runtime.temporal',
+      status: 'PASS',
+      detail: `TimeTrace resolved via ${resolution.file} with workspace ${resolution.workspacePath}.`,
+    });
+    for (const warning of resolution.warnings) {
+      checks.push({
+        name: 'runtime.temporal.warning',
+        status: 'WARN',
+        detail: warning,
+      });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    checks.push({
+      name: 'runtime.temporal',
+      status: writeBackEnabled ? 'WARN' : 'WARN',
+      detail: `TimeTrace integration is configured but not ready: ${message}`,
+    });
+  }
+
+  return checks;
 }
 
 function validateHookRegistry(projectRoot: string, hookRegistryPath: string, configPath: string): void {
@@ -327,7 +411,11 @@ function validateHookRegistry(projectRoot: string, hookRegistryPath: string, con
         );
       }
       const resolvedScriptPath = path.resolve(projectRoot, scriptPath);
-      if (!fs.existsSync(resolvedScriptPath)) {
+      const hooksScriptRoot = path.resolve(projectRoot, '.skillcapsule', 'hooks', 'scripts');
+      const relativeToHooks = path.relative(hooksScriptRoot, resolvedScriptPath);
+      const isHookLocalScript =
+        !relativeToHooks.startsWith('..') && !path.isAbsolute(relativeToHooks);
+      if (isHookLocalScript && !fs.existsSync(resolvedScriptPath)) {
         throw new SkillCapsuleRuntimeError(
           'HOOK_SCRIPT_NOT_FOUND',
           `Hook ${hook.id} references a missing script: ${resolvedScriptPath}`,

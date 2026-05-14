@@ -1,0 +1,14 @@
+{
+  "id": "meta.registry.validator",
+  "version": "1.0.0",
+  "name": "Registry Validator",
+  "description": "Validates the Skill Capsule registry integrity and schema compliance.",
+  "triggers": ["validate", "doctor", "index", "verify-registry"],
+  "task_types": ["meta_analysis", "system_optimization"],
+  "risk": "medium",
+  "mode": "inspect",
+  "hooks": [
+    "hook.skillcap.doctor",
+    "hook.skillcap.index"
+  ]
+}

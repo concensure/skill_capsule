@@ -1,14 +1,22 @@
 {
   "version": "1.0",
-  "computed_at": "2026-05-13T04:15:31.558Z",
+  "computed_at": "2026-05-14T01:28:34.414Z",
   "atoms": [
+    {
+      "atom_id": "bug.pattern.extractor",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-14T01:28:34.414Z"
+    },
     {
       "atom_id": "capsule.architect.manage",
       "sample_count": 0,
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.edit.safe",
@@ -16,7 +24,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.edit.scope_guard",
@@ -24,7 +32,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.guard.local",
@@ -32,7 +40,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.refactor.boundary_check",
@@ -40,7 +48,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.review.diff_risk",
@@ -48,7 +56,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.test.related_tests",
@@ -56,7 +64,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "code.verify.typecheck",
@@ -64,7 +72,15 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
+    },
+    {
+      "atom_id": "fix.strategy.generator",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "github.commit.message",
@@ -72,7 +88,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "github.push.confirmation",
@@ -80,7 +96,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "github.upload.safety",
@@ -88,7 +104,15 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
+    },
+    {
+      "atom_id": "learning.atom.creator",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "meta.monitor.usage",
@@ -96,7 +120,7 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
     },
     {
       "atom_id": "meta.propose.composite",
@@ -104,7 +128,15 @@
       "token_efficiency": null,
       "hook_pass_rate": null,
       "activation_accept_rate": null,
-      "computed_at": "2026-05-13T04:15:31.558Z"
+      "computed_at": "2026-05-14T01:28:34.414Z"
+    },
+    {
+      "atom_id": "meta.registry.validator",
+      "sample_count": 0,
+      "token_efficiency": null,
+      "hook_pass_rate": null,
+      "activation_accept_rate": null,
+      "computed_at": "2026-05-14T01:28:34.414Z"
     }
   ]
 }

@@ -6,7 +6,8 @@
   "atoms": [
     "bug.pattern.extractor",
     "fix.strategy.generator",
-    "learning.atom.creator"
+    "learning.atom.creator",
+    "meta.registry.validator"
   ],
   "default_budget": 600,
   "risk_policy": {

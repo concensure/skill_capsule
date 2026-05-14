@@ -1,0 +1,21 @@
+{
+  "id": "stage.qa.integrity",
+  "name": "Stage: QA (Integrity)",
+  "version": "1.0.0",
+  "description": "Environment for verification. Ensures technical correctness, type safety, and test coverage before merging.",
+  "composition": [
+    "code.verify.typecheck",
+    "code.test.related_tests",
+    "code.refactor.boundary_check",
+    "github.commit.message"
+  ],
+  "governance": {
+    "risk_tolerance": "medium",
+    "enforcement_level": "mandatory",
+    "smartlearn_mode": "verify_lessons"
+  },
+  "triggers": {
+    "environment": "test",
+    "keywords": ["fix", "test", "integration", "pull-request"]
+  }
+}
